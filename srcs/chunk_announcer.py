@@ -11,7 +11,7 @@ def chunk_announcer():
     username = input("Enter your username: ")
     file_to_host = input("Enter the file name to host: ")
 
-    # TODO: Ece hoca chunk parçalayan kod vericekmiş. Burada çağrılacak
+    # Ece hoca chunk parçalayan kod vericekmiş. Burada çağrılacak
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
         udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
