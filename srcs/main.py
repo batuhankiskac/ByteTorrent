@@ -1,5 +1,4 @@
 import os
-import time
 
 from chunk_downloader import download_file, load_network_state
 
