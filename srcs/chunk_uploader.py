@@ -44,8 +44,8 @@ def handle(conn, addr):
 
                 msg = json.loads(req)
 
-                if "requested_content" in msg:
-                    chunk = msg.get("requested_content")
+                if "requested content" in msg:
+                    chunk = msg.get("requested content")
                     print(f"[{time.strftime('%X')}] Request received for chunk: {chunk} from {ip}")
 
                     if os.path.exists(chunk):
@@ -75,7 +75,7 @@ def handle(conn, addr):
                     conn.sendall(resp.encode("utf-8"))
 
                 elif "requested secured content" in msg:
-                    chunk = msg.get("requested_secured_content")
+                    chunk = msg.get("requested secured content")
                     print(f"[{time.strftime('%X')}] Secure request received for chunk: {chunk} from {ip}")
 
                     if not shared_secret:

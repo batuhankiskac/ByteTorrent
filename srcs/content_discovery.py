@@ -59,12 +59,15 @@ def content_discovery():
                     ip2user[ip] = user
                     user2ip[user] = ip
 
+                    changed = False
                     for chunk in chunk_list:
                         users = chunks.setdefault(chunk, [])
                         if user not in users:
                             users.append(user)
+                            changed = True
 
-                    save()
+                    if changed:
+                        save()
 
                 print(f"[{time.strftime('%X')}] Peer Found: {user} ({ip}) hosts {', '.join(chunk_list)}")
 
