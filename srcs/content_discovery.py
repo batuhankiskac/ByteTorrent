@@ -17,7 +17,7 @@ chunks = {}
 lock = threading.Lock()
 
 
-def save():
+def save_state():
     state = {
         "ip2user": ip2user,
         "user2ip": user2ip,
@@ -33,7 +33,7 @@ def cleanup():
         time.sleep(INTERVAL)
         with lock:
             chunks.clear()
-            save()
+            save_state()
         print(f"[{time.strftime('%X')}] Recency Check: Content dictionary cleared.")
 
 
@@ -51,9 +51,9 @@ def content_discovery():
                 data, addr = sock.recvfrom(BUFSIZE)
                 ip = addr[0]
 
-                msg = json.loads(data.decode("utf-8"))
-                user = msg.get("username")
-                chunk_list = msg.get("chunks", [])
+                message = json.loads(data.decode("utf-8"))
+                user = message.get("username")
+                chunk_list = message.get("chunks", [])
 
                 with lock:
                     ip2user[ip] = user
@@ -67,7 +67,7 @@ def content_discovery():
                             changed = True
 
                     if changed:
-                        save()
+                        save_state()
 
                 print(f"[{time.strftime('%X')}] Peer Found: {user} ({ip}) hosts {', '.join(chunk_list)}")
 

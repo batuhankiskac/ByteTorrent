@@ -1,6 +1,6 @@
 import os
 
-from chunk_downloader import download_file, load_network_state
+from chunk_downloader import download_file, load_state
 
 
 DOWNLOAD_LOG = "download_history.log"
@@ -8,7 +8,7 @@ UPLOAD_LOG = "upload_history.log"
 
 
 def view_contents():
-    state = load_network_state()
+    state = load_state()
     if not state or not state.get("chunks"):
         print("\nNo content available on the network.")
         return
@@ -24,8 +24,8 @@ def view_contents():
     if not contents:
         print("  (No valid chunked files found.)")
     else:
-        for c in sorted(contents):
-            print(f"  - {c}")
+        for content in sorted(contents):
+            print(f"  - {content}")
     print("-------------------------")
 
 

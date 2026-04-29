@@ -11,5 +11,5 @@ def generate_private_key():
 def generate_public_key(private_key):
     return pow(G, private_key, P)
 
-def generate_shared_secret(received_public_key, my_private_key):
+def compute_shared_key(received_public_key, my_private_key):
     return pow(received_public_key, my_private_key, P)

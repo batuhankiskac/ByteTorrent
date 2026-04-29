@@ -19,7 +19,7 @@ def log_download(chunk, user, ip):
     print(f"[{time.strftime('%X')}] Logged: {line.strip()}")
 
 
-def load_network_state():
+def load_state():
     if not os.path.exists(STATE_FILE):
         print(f"[{time.strftime('%X')}] Error: {STATE_FILE} not found.")
         return None
@@ -49,10 +49,10 @@ def download_secure(sock, chunk_name):
     resp_data = sock.recv(4096).decode("utf-8")
     server_pub_key = int(json.loads(resp_data)["key"])
 
-    shared_secret = diffie_hellman.generate_shared_secret(server_pub_key, my_priv_key)
+    shared_secret = diffie_hellman.compute_shared_key(server_pub_key, my_priv_key)
 
-    req = json.dumps({"requested secured content": chunk_name})
-    sock.sendall(req.encode("utf-8"))
+    request = json.dumps({"requested secured content": chunk_name})
+    sock.sendall(request.encode("utf-8"))
 
     response_data = receive_all(sock)
     response = json.loads(response_data)
@@ -137,7 +137,7 @@ def download_chunk(chunk_name, state, is_secure=False):
 
 
 def download_file(file_name, is_secure=False, num_chunks=3):
-    state = load_network_state()
+    state = load_state()
     if not state:
         return
 

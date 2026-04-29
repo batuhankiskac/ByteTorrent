@@ -9,7 +9,7 @@ PORT = 6000
 INTERVAL = 8
 
 
-def announcer():
+def start_announcer():
     username = input("Enter your username: ")
     file_to_host = input("Enter the file name to host: ")
 
@@ -32,13 +32,13 @@ def announcer():
 
             print(f"[{time.strftime('%X')}] {len(chunks)} chunks found for '{file_to_host}'. Starting announcement...")
 
-            msg = json.dumps({
+            message = json.dumps({
                 "username": username,
                 "chunks": chunks
             }).encode("utf-8")
 
             try:
-                sock.sendto(msg, (IP, PORT))
+                sock.sendto(message, (IP, PORT))
                 print(f"[{time.strftime('%X')}] Announcement sent: {chunks}")
             except Exception as e:
                 print(f"Error sending announcement: {e}")
@@ -47,4 +47,4 @@ def announcer():
 
 
 if __name__ == "__main__":
-    announcer()
+    start_announcer()
