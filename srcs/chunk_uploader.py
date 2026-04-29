@@ -4,6 +4,8 @@ import os
 import socket
 import threading
 import time
+import diffie_hellman
+import pyDes
 
 
 PORT = 6001
@@ -31,36 +33,73 @@ def get_user(ip):
 
 def handle(conn, addr):
     ip = addr[0]
+    shared_secret = None
 
     with conn:
         try:
-            req = conn.recv(BUFSIZE).decode("utf-8")
-            if not req:
-                return
+            while True:
+                req = conn.recv(BUFSIZE).decode("utf-8")
+                if not req:
+                    break
 
-            msg = json.loads(req)
-            chunk = msg.get("requested_content")
+                msg = json.loads(req)
 
-            if chunk:
-                print(f"[{time.strftime('%X')}] Request received for chunk: {chunk} from {ip}")
+                if "requested_content" in msg:
+                    chunk = msg.get("requested_content")
+                    print(f"[{time.strftime('%X')}] Request received for chunk: {chunk} from {ip}")
 
-                if os.path.exists(chunk):
-                    with open(chunk, "rb") as f:
-                        data = base64.b64encode(f.read()).decode("utf-8")
+                    if os.path.exists(chunk):
+                        with open(chunk, "rb") as f:
+                            data = base64.b64encode(f.read()).decode("utf-8")
 
-                    resp = json.dumps({
-                        "chunk_name": chunk,
-                        "data": data
-                    })
+                        resp = json.dumps({
+                            "chunk_name": chunk,
+                            "data": data
+                        })
+                        conn.sendall(resp.encode("utf-8"))
+                        print(f"[{time.strftime('%X')}] Successfully sent {chunk}")
+                        log(chunk, get_user(ip))
+                    else:
+                        conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
+                    break
+
+                elif "key" in msg:
+                    client_pub_key = int(msg["key"])
+                    print(f"[{time.strftime('%X')}] Secure handshake initiated ({ip})")
+
+                    my_private_key = diffie_hellman.generate_private_key()
+                    my_pub_key = diffie_hellman.generate_public_key(my_private_key)
+                    shared_secret = diffie_hellman.generate_shared_secret(client_pub_key, my_private_key)
+
+                    resp = json.dumps({"key": str(my_pub_key)})
                     conn.sendall(resp.encode("utf-8"))
-                    print(f"[{time.strftime('%X')}] Successfully sent {chunk} to {ip}")
-                    log(chunk, get_user(ip))
-                else:
-                    print(f"[{time.strftime('%X')}] Error: Chunk '{chunk}' not found.")
-                    conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
 
-            elif "key" in msg or "requested_secured_content" in msg:
-                print(f"[{time.strftime('%X')}] Secure request received. (Phase 3)")
+                elif "requested_secured_content" in msg:
+                    chunk = msg.get("requested_secured_content")
+                    print(f"[{time.strftime('%X')}] Secure request received for chunk: {chunk} from {ip}")
+
+                    if not shared_secret:
+                        conn.sendall(json.dumps({"error": "No shared key established"}).encode("utf-8"))
+                        break
+
+                    if os.path.exists(chunk):
+                        with open(chunk, "rb") as f:
+                            raw = f.read()
+
+                        des_key = str(shared_secret).zfill(8)[:8].encode("utf-8")
+                        encrypted = pyDes.des(des_key, pyDes.ECB, pad=None, padmode=pyDes.PAD_PKCS5).encrypt(raw)
+                        safe = base64.b64encode(encrypted).decode("utf-8")
+
+                        resp = json.dumps({
+                            "chunk_name": chunk,
+                            "encrypted_chunk": safe
+                        })
+                        conn.sendall(resp.encode("utf-8"))
+                        print(f"[{time.strftime('%X')}] Securely sent {chunk}")
+                        log(chunk, get_user(ip))
+                    else:
+                        conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
+                    break
 
         except json.JSONDecodeError:
             print(f"[{time.strftime('%X')}] Error: Invalid JSON from {ip}")
