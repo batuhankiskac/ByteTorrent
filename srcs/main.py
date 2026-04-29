@@ -66,7 +66,7 @@ def main_menu():
             is_secure = (secure == "y")
 
             if is_secure:
-                print("\n[INFO] Secure download (Diffie-Hellman) will be added in Phase 3.")
+                download_file(target, is_secure=True)
             else:
                 download_file(target)
 

@@ -17,7 +17,20 @@ def announcer():
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         while True:
-            chunks = [f for f in os.listdir() if "_" in f and "." not in f]
+            chunks = sorted([
+                f for f in os.listdir()
+                if os.path.isfile(f)
+                and "_" in f
+                and "." not in f
+                and f.startswith(file_to_host + "_")
+            ])
+
+            if not chunks:
+                print(f"[{time.strftime('%X')}] No chunks found for '{file_to_host}', waiting...")
+                time.sleep(INTERVAL)
+                continue
+
+            print(f"[{time.strftime('%X')}] {len(chunks)} chunks found for '{file_to_host}'. Starting announcement...")
 
             msg = json.dumps({
                 "username": username,

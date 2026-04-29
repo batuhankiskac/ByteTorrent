@@ -6,7 +6,7 @@ import time
 
 PORT = 6000
 BUFSIZE = 4096
-INTERVAL = 60
+INTERVAL = 120
 STATE = "network_state.json"
 
 
@@ -28,15 +28,13 @@ def save():
 
 
 def cleanup():
-    global ip2user, user2ip, chunks
+    global chunks
     while True:
         time.sleep(INTERVAL)
         with lock:
-            ip2user.clear()
-            user2ip.clear()
             chunks.clear()
             save()
-        print(f"[{time.strftime('%X')}] Recency Check: State cleared.")
+        print(f"[{time.strftime('%X')}] Recency Check: Content dictionary cleared.")
 
 
 def content_discovery():

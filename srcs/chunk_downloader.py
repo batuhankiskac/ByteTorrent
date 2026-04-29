@@ -12,8 +12,8 @@ STATE_FILE = "network_state.json"
 LOG_FILE = "download_history.log"
 
 
-def log_download(chunk, user):
-    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] DOWNLOADED - Chunk: {chunk} - From: {user}\n"
+def log_download(chunk, user, ip):
+    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] RECEIVED - Chunk: {chunk} - From: {user} ({ip})\n"
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(line)
     print(f"[{time.strftime('%X')}] Logged: {line.strip()}")
@@ -74,7 +74,7 @@ def download_chunk(chunk_name, state, is_secure=False):
 
                     shared_secret = diffie_hellman.generate_shared_secret(server_pub_key, my_priv_key)
 
-                    req = json.dumps({"requested_secured_content": chunk_name})
+                    req = json.dumps({"requested secured content": chunk_name})
                     sock.sendall(req.encode("utf-8"))
 
                     response_data = receive_all(sock)
@@ -84,7 +84,7 @@ def download_chunk(chunk_name, state, is_secure=False):
                         print(f"[{time.strftime('%X')}] {user} returned an error: {response['error']}")
                         continue
 
-                    encrypted_bytes = base64.b64decode(response.get("encrypted_chunk", ""))
+                    encrypted_bytes = base64.b64decode(response.get("encrypted chunk", ""))
                     des_key = str(shared_secret).zfill(8)[:8].encode("utf-8")
                     decrypted = pyDes.des(des_key, pyDes.ECB, pad=None, padmode=pyDes.PAD_PKCS5).decrypt(encrypted_bytes)
 
@@ -92,11 +92,11 @@ def download_chunk(chunk_name, state, is_secure=False):
                         f.write(decrypted)
 
                     print(f"[{time.strftime('%X')}] Success (Secure): '{chunk_name}' downloaded from {user}.")
-                    log_download(chunk_name, user)
+                    log_download(chunk_name, user, ip)
                     return True
 
                 else:
-                    request = json.dumps({"requested_content": chunk_name})
+                    request = json.dumps({"requested content": chunk_name})
                     sock.sendall(request.encode("utf-8"))
 
                     response_data = receive_all(sock)
@@ -115,17 +115,17 @@ def download_chunk(chunk_name, state, is_secure=False):
                         f.write(decoded_data)
 
                     print(f"[{time.strftime('%X')}] Success (Plain): '{chunk_name}' downloaded from {user}.")
-                    log_download(chunk_name, user)
+                    log_download(chunk_name, user, ip)
                     return True
 
         except (socket.error, socket.timeout) as e:
-            print(f"[{time.strftime('%X')}] {user} ({ip}) is offline or unreachable. Error: {e}")
+            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. Error: {e}")
         except json.JSONDecodeError:
-            print(f"[{time.strftime('%X')}] Data from {user} ({ip}) could not be parsed.")
+            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. Data could not be parsed.")
         except Exception as e:
-            print(f"[{time.strftime('%X')}] Download error: {e}")
+            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. Error: {e}")
 
-    print(f"[{time.strftime('%X')}] Failed: '{chunk_name}' could not be downloaded from any source.")
+    print(f"[{time.strftime('%X')}] CHUNK {chunk_name} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")
     return False
 
 

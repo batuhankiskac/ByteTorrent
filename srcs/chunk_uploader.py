@@ -53,7 +53,7 @@ def handle(conn, addr):
                             data = base64.b64encode(f.read()).decode("utf-8")
 
                         resp = json.dumps({
-                            "chunk_name": chunk,
+                            "chunk name": chunk,
                             "data": data
                         })
                         conn.sendall(resp.encode("utf-8"))
@@ -74,7 +74,7 @@ def handle(conn, addr):
                     resp = json.dumps({"key": str(my_pub_key)})
                     conn.sendall(resp.encode("utf-8"))
 
-                elif "requested_secured_content" in msg:
+                elif "requested secured content" in msg:
                     chunk = msg.get("requested_secured_content")
                     print(f"[{time.strftime('%X')}] Secure request received for chunk: {chunk} from {ip}")
 
@@ -91,8 +91,8 @@ def handle(conn, addr):
                         safe = base64.b64encode(encrypted).decode("utf-8")
 
                         resp = json.dumps({
-                            "chunk_name": chunk,
-                            "encrypted_chunk": safe
+                            "chunk name": chunk,
+                            "encrypted chunk": safe
                         })
                         conn.sendall(resp.encode("utf-8"))
                         print(f"[{time.strftime('%X')}] Securely sent {chunk}")
