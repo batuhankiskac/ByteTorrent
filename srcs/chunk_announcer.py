@@ -25,6 +25,17 @@ def start_announcer(username=None, file_to_host=None):
     else:
         print(f"[{ts()}] Warning: Could not split '{file_to_host}'. Looking for existing chunk files...")
 
+    existing_chunks = [
+        f for f in os.listdir()
+        if os.path.isfile(f)
+        and "_" in f
+        and "." not in f
+        and f.startswith(file_to_host + "_")
+    ]
+    if not existing_chunks:
+        print(f"[{ts()}] Error: No chunks found for '{file_to_host}'. Hosting aborted.")
+        return
+
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         if IP not in ("127.0.0.1", "localhost"):
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
