@@ -1,5 +1,7 @@
 import os
+import threading
 from chunk_downloader import download_file, load_state
+import chunk_announcer
 
 DOWNLOAD_LOG = "download_history.log"
 UPLOAD_LOG = "upload_history.log"
@@ -52,9 +54,10 @@ def main_menu():
         print("1. View available content")
         print("2. Download content")
         print("3. View history")
-        print("4. Exit")
+        print("4. Host a file")
+        print("5. Exit")
 
-        choice = input("Select an option (1-4): ").strip()
+        choice = input("Select an option (1-5): ").strip()
 
         if choice == "1":
             view_contents()
@@ -72,6 +75,24 @@ def main_menu():
             view_history()
 
         elif choice == "4":
+            target = input("Enter file name to host: ").strip()
+            if target:
+                username = input("Enter your username: ").strip()
+                if username:
+                    announcer_thread = threading.Thread(
+                        target=chunk_announcer.start_announcer,
+                        args=(username, target),
+                        daemon=True,
+                        name="ChunkAnnouncer"
+                    )
+                    announcer_thread.start()
+                    print(f"Hosting '{target}' as '{username}' in the background...")
+                else:
+                    print("Username cannot be empty.")
+            else:
+                print("File name cannot be empty.")
+
+        elif choice == "5":
             print("Shutting down ByteTorrent...")
             break
         else:

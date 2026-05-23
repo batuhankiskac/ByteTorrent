@@ -13,9 +13,11 @@ def ts():
     return time.strftime('%X')
 
 
-def start_announcer():
-    username = input("Enter your username: ")
-    file_to_host = input("Enter the file name to host: ")
+def start_announcer(username=None, file_to_host=None):
+    if username is None:
+        username = input("Enter your username: ")
+    if file_to_host is None:
+        file_to_host = input("Enter the file name to host: ")
 
     chunk_names = split_file(file_to_host)
     if chunk_names:
