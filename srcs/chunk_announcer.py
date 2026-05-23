@@ -3,11 +3,9 @@ import os
 import socket
 import time
 
-
 IP = "192.168.1.255"
 PORT = 6000
 INTERVAL = 8
-
 
 def start_announcer():
     username = input("Enter your username: ")
@@ -44,7 +42,6 @@ def start_announcer():
                 print(f"Error sending announcement: {e}")
 
             time.sleep(INTERVAL)
-
 
 if __name__ == "__main__":
     start_announcer()

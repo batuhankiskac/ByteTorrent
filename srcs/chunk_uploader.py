@@ -7,19 +7,16 @@ import time
 import diffie_hellman
 import pyDes
 
-
 PORT = 6001
 BUFSIZE = 4096
 LOG = "upload_history.log"
 STATE = "network_state.json"
-
 
 def log_upload(chunk, user):
     line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] SENT - Chunk: {chunk} - To: {user}\n"
     with open(LOG, "a") as f:
         f.write(line)
     print(f"[{time.strftime('%X')}] Logged: {line.strip()}")
-
 
 def get_user(ip):
     if not os.path.exists(STATE):
@@ -29,7 +26,6 @@ def get_user(ip):
             return json.load(f).get("ip2user", {}).get(ip, ip)
     except Exception:
         return ip
-
 
 def handle_client(conn, addr):
     ip = addr[0]
@@ -108,7 +104,6 @@ def handle_client(conn, addr):
         except Exception as e:
             print(f"[{time.strftime('%X')}] Error handling {ip}: {e}")
 
-
 def uploader():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -126,7 +121,6 @@ def uploader():
                 break
             except Exception as e:
                 print(f"[{time.strftime('%X')}] Server error: {e}")
-
 
 if __name__ == "__main__":
     uploader()

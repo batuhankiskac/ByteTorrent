@@ -1,7 +1,5 @@
-
 import random
 
-#Constants
 P = 907
 G = 7
 
