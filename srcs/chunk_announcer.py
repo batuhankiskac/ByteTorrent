@@ -4,7 +4,7 @@ import socket
 import time
 from file_utils import split_file
 
-IP = "192.168.1.255"
+IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
 PORT = 6000
 INTERVAL = 8
 
@@ -24,7 +24,8 @@ def start_announcer():
         print(f"[{ts()}] Warning: Could not split '{file_to_host}'. Looking for existing chunk files...")
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        if IP not in ("127.0.0.1", "localhost"):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         while True:
             chunks = sorted([
