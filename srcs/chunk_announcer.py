@@ -2,16 +2,23 @@ import json
 import os
 import socket
 import time
-
+from file_utils import split_file
 
 IP = "192.168.1.255"
 PORT = 6000
 INTERVAL = 8
 
-
 def start_announcer():
     username = input("Enter your username: ")
     file_to_host = input("Enter the file name to host: ")
+
+    # Split the file into chunks (Req 2.1.0-A)
+    chunk_names = split_file(file_to_host)
+    if chunk_names:
+        print(f"[{time.strftime('%X')}] Split '{file_to_host}' into {len(chunk_names)} chunk(s): {', '.join(chunk_names)}")
+        print(f"[{time.strftime('%X')}] Starting announcement...")
+    else:
+        print(f"[{time.strftime('%X')}] No chunks found for '{file_to_host}'. Looking for existing chunk files...")
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -44,7 +51,6 @@ def start_announcer():
                 print(f"Error sending announcement: {e}")
 
             time.sleep(INTERVAL)
-
 
 if __name__ == "__main__":
     start_announcer()

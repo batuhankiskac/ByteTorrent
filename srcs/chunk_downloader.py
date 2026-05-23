@@ -5,19 +5,17 @@ import socket
 import time
 import diffie_hellman
 import pyDes
-
+from file_utils import merge_chunks
 
 PORT = 6001
 STATE_FILE = "network_state.json"
 LOG_FILE = "download_history.log"
-
 
 def log_download(chunk, user, ip):
     line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] RECEIVED - Chunk: {chunk} - From: {user} ({ip})\n"
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(line)
     print(f"[{time.strftime('%X')}] Logged: {line.strip()}")
-
 
 def load_state():
     if not os.path.exists(STATE_FILE):
@@ -30,7 +28,6 @@ def load_state():
         print(f"[{time.strftime('%X')}] Error: {STATE_FILE} could not be read (Invalid JSON).")
         return None
 
-
 def receive_all(sock):
     data = b""
     while True:
@@ -39,7 +36,6 @@ def receive_all(sock):
             break
         data += packet
     return data.decode("utf-8")
-
 
 def download_secure(sock, chunk_name):
     my_priv_key = diffie_hellman.generate_private_key()
@@ -69,7 +65,6 @@ def download_secure(sock, chunk_name):
 
     return True
 
-
 def download_plain(sock, chunk_name):
     request = json.dumps({"requested content": chunk_name})
     sock.sendall(request.encode("utf-8"))
@@ -89,7 +84,6 @@ def download_plain(sock, chunk_name):
         f.write(decoded_data)
 
     return True
-
 
 def download_chunk(chunk_name, state, is_secure=False):
     chunks_map = state.get("chunks", {})
@@ -135,7 +129,6 @@ def download_chunk(chunk_name, state, is_secure=False):
     print(f"[{time.strftime('%X')}] CHUNK {chunk_name} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")
     return False
 
-
 def download_file(file_name, is_secure=False, num_chunks=3):
     state = load_state()
     if not state:
@@ -152,10 +145,13 @@ def download_file(file_name, is_secure=False, num_chunks=3):
             break
 
     if all_success:
-        print(f"\n[{time.strftime('%X')}] All chunks downloaded successfully. Proceed to merge.")
+        merged_path = merge_chunks(file_name, num_chunks)
+        if merged_path:
+            print(f"\n[{time.strftime('%X')}] File successfully downloaded and merged to '{merged_path}'")
+        else:
+            print(f"\n[{time.strftime('%X')}] Download complete but merge failed.")
     else:
         print(f"\n[{time.strftime('%X')}] Download incomplete. Missing chunks.")
-
 
 if __name__ == "__main__":
     target = input("Enter the name of the file you want to download: ")

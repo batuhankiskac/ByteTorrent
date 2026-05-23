@@ -2,10 +2,8 @@ import os
 
 from chunk_downloader import download_file, load_state
 
-
 DOWNLOAD_LOG = "download_history.log"
 UPLOAD_LOG = "upload_history.log"
-
 
 def view_contents():
     state = load_state()
@@ -28,7 +26,6 @@ def view_contents():
             print(f"  - {content}")
     print("-------------------------")
 
-
 def view_history():
     print("\n========== DOWNLOAD HISTORY ==========")
     if os.path.exists(DOWNLOAD_LOG):
@@ -44,7 +41,6 @@ def view_history():
     else:
         print("Upload log not found.")
     print("====================================")
-
 
 def main_menu():
     while True:
@@ -77,7 +73,6 @@ def main_menu():
             break
         else:
             print("Invalid option. Please try again.")
-
 
 if __name__ == "__main__":
     main_menu()

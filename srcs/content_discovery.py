@@ -3,19 +3,16 @@ import socket
 import threading
 import time
 
-
 PORT = 6000
 BUFSIZE = 4096
-INTERVAL = 120
+INTERVAL = 60
 STATE = "network_state.json"
-
 
 ip2user = {}
 user2ip = {}
 chunks = {}
 
 lock = threading.Lock()
-
 
 def save_state():
     state = {
@@ -26,7 +23,6 @@ def save_state():
     with open(STATE, "w") as f:
         json.dump(state, f, indent=4)
 
-
 def cleanup():
     global chunks
     while True:
@@ -35,7 +31,6 @@ def cleanup():
             chunks.clear()
             save_state()
         print(f"[{time.strftime('%X')}] Recency Check: Content dictionary cleared.")
-
 
 def content_discovery():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -80,7 +75,6 @@ def content_discovery():
                 break
             except Exception as e:
                 print(f"[{time.strftime('%X')}] Error: {e}")
-
 
 if __name__ == "__main__":
     content_discovery()
