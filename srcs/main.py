@@ -1,9 +1,9 @@
 import os
-
 from chunk_downloader import download_file, load_state
 
 DOWNLOAD_LOG = "download_history.log"
 UPLOAD_LOG = "upload_history.log"
+
 
 def view_contents():
     state = load_state()
@@ -26,21 +26,25 @@ def view_contents():
             print(f"  - {content}")
     print("-------------------------")
 
+
 def view_history():
     print("\n========== DOWNLOAD HISTORY ==========")
     if os.path.exists(DOWNLOAD_LOG):
         with open(DOWNLOAD_LOG, "r", encoding="utf-8") as f:
-            print(f.read().strip() or "No downloads yet.")
+            content = f.read().strip()
+            print(content or "No downloads yet.")
     else:
         print("Download log not found.")
 
     print("\n========== UPLOAD HISTORY ==========")
     if os.path.exists(UPLOAD_LOG):
         with open(UPLOAD_LOG, "r", encoding="utf-8") as f:
-            print(f.read().strip() or "No uploads yet.")
+            content = f.read().strip()
+            print(content or "No uploads yet.")
     else:
         print("Upload log not found.")
     print("====================================")
+
 
 def main_menu():
     while True:
@@ -50,17 +54,16 @@ def main_menu():
         print("3. View history")
         print("4. Exit")
 
-        choice = input("Select an option (1-4): ")
+        choice = input("Select an option (1-4): ").strip()
 
         if choice == "1":
             view_contents()
 
         elif choice == "2":
-            target = input("Enter file name to download (e.g. forest): ")
+            target = input("Enter file name to download (e.g. forest): ").strip()
             secure = input("Secure download? (y/n): ").strip().lower()
-            is_secure = (secure == "y")
 
-            if is_secure:
+            if secure == "y":
                 download_file(target, is_secure=True)
             else:
                 download_file(target)
@@ -73,6 +76,7 @@ def main_menu():
             break
         else:
             print("Invalid option. Please try again.")
+
 
 if __name__ == "__main__":
     main_menu()

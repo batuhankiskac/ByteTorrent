@@ -14,23 +14,57 @@ chunks = {}
 
 lock = threading.Lock()
 
+
+def ts():
+    return time.strftime('%X')
+
+
 def save_state():
     state = {
         "ip2user": ip2user,
         "user2ip": user2ip,
         "chunks": chunks
     }
-    with open(STATE, "w") as f:
+    with open(STATE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=4)
 
+
 def cleanup():
-    global chunks
     while True:
         time.sleep(INTERVAL)
         with lock:
             chunks.clear()
             save_state()
-        print(f"[{time.strftime('%X')}] Recency Check: Content dictionary cleared.")
+        print(f"[{ts()}] Recency check: Content dictionary cleared.")
+
+
+def handle_announcement(data, addr):
+    ip = addr[0]
+    try:
+        message = json.loads(data.decode("utf-8"))
+    except json.JSONDecodeError:
+        print(f"[{ts()}] Error: Invalid JSON from {ip}")
+        return
+
+    user = message.get("username")
+    chunk_list = message.get("chunks", [])
+
+    with lock:
+        ip2user[ip] = user
+        user2ip[user] = ip
+
+        changed = False
+        for chunk in chunk_list:
+            users = chunks.setdefault(chunk, [])
+            if user not in users:
+                users.append(user)
+                changed = True
+
+        if changed:
+            save_state()
+
+    print(f"[{ts()}] Peer Found: {user} ({ip}) hosts {', '.join(chunk_list)}")
+
 
 def content_discovery():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -44,37 +78,13 @@ def content_discovery():
         while True:
             try:
                 data, addr = sock.recvfrom(BUFSIZE)
-                ip = addr[0]
-
-                message = json.loads(data.decode("utf-8"))
-                user = message.get("username")
-                chunk_list = message.get("chunks", [])
-
-                with lock:
-                    ip2user[ip] = user
-                    user2ip[user] = ip
-
-                    changed = False
-                    for chunk in chunk_list:
-                        users = chunks.setdefault(chunk, [])
-                        if user not in users:
-                            users.append(user)
-                            changed = True
-
-                    if changed:
-                        save_state()
-
-                print(f"[{time.strftime('%X')}] Peer Found: {user} ({ip}) hosts {', '.join(chunk_list)}")
-
-            except json.JSONDecodeError:
-                print(f"[{time.strftime('%X')}] Error: Invalid JSON from {addr}")
-            except socket.error as e:
-                print(f"[{time.strftime('%X')}] Socket error: {e}")
+                handle_announcement(data, addr)
             except KeyboardInterrupt:
                 print("\nShutting down Content Discovery...")
                 break
             except Exception as e:
-                print(f"[{time.strftime('%X')}] Error: {e}")
+                print(f"[{ts()}] Error: {e}")
+
 
 if __name__ == "__main__":
     content_discovery()

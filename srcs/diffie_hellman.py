@@ -3,11 +3,14 @@ import random
 P = 907
 G = 7
 
+
 def generate_private_key():
     return random.randint(2, P - 2)
 
+
 def generate_public_key(private_key):
     return pow(G, private_key, P)
+
 
 def compute_shared_key(received_public_key, my_private_key):
     return pow(received_public_key, my_private_key, P)

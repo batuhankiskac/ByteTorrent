@@ -11,22 +11,29 @@ PORT = 6001
 STATE_FILE = "network_state.json"
 LOG_FILE = "download_history.log"
 
+
+def ts():
+    return time.strftime('%X')
+
+
 def log_download(chunk, user, ip):
-    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] RECEIVED - Chunk: {chunk} - From: {user} ({ip})\n"
+    entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] RECEIVED - Chunk: {chunk} - From: {user} ({ip})"
     with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(line)
-    print(f"[{time.strftime('%X')}] Logged: {line.strip()}")
+        f.write(entry + "\n")
+    print(f"[{ts()}] {entry}")
+
 
 def load_state():
     if not os.path.exists(STATE_FILE):
-        print(f"[{time.strftime('%X')}] Error: {STATE_FILE} not found.")
+        print(f"[{ts()}] Error: {STATE_FILE} not found.")
         return None
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
-        print(f"[{time.strftime('%X')}] Error: {STATE_FILE} could not be read (Invalid JSON).")
+        print(f"[{ts()}] Error: {STATE_FILE} could not be read (Invalid JSON).")
         return None
+
 
 def receive_all(sock):
     data = b""
@@ -36,6 +43,7 @@ def receive_all(sock):
             break
         data += packet
     return data.decode("utf-8")
+
 
 def download_secure(sock, chunk_name):
     my_priv_key = diffie_hellman.generate_private_key()
@@ -47,8 +55,7 @@ def download_secure(sock, chunk_name):
 
     shared_secret = diffie_hellman.compute_shared_key(server_pub_key, my_priv_key)
 
-    request = json.dumps({"requested secured content": chunk_name})
-    sock.sendall(request.encode("utf-8"))
+    sock.sendall(json.dumps({"requested secured content": chunk_name}).encode("utf-8"))
 
     response_data = receive_all(sock)
     response = json.loads(response_data)
@@ -65,9 +72,9 @@ def download_secure(sock, chunk_name):
 
     return True
 
+
 def download_plain(sock, chunk_name):
-    request = json.dumps({"requested content": chunk_name})
-    sock.sendall(request.encode("utf-8"))
+    sock.sendall(json.dumps({"requested content": chunk_name}).encode("utf-8"))
 
     response_data = receive_all(sock)
     if not response_data:
@@ -85,6 +92,7 @@ def download_plain(sock, chunk_name):
 
     return True
 
+
 def download_chunk(chunk_name, state, is_secure=False):
     chunks_map = state.get("chunks", {})
     user2ip_map = state.get("user2ip", {})
@@ -92,7 +100,7 @@ def download_chunk(chunk_name, state, is_secure=False):
     users_with_chunk = chunks_map.get(chunk_name, [])
 
     if not users_with_chunk:
-        print(f"[{time.strftime('%X')}] Error: '{chunk_name}' not found on the network.")
+        print(f"[{ts()}] Error: '{chunk_name}' not found on the network.")
         return False
 
     for user in users_with_chunk:
@@ -101,7 +109,7 @@ def download_chunk(chunk_name, state, is_secure=False):
             continue
 
         mode = "Secure" if is_secure else "Plain"
-        print(f"[{time.strftime('%X')}] Connecting [{mode}] to {user} ({ip}) for '{chunk_name}'...")
+        print(f"[{ts()}] Connecting [{mode}] to {user} ({ip}) for '{chunk_name}'...")
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -113,21 +121,22 @@ def download_chunk(chunk_name, state, is_secure=False):
                 else:
                     download_plain(sock, chunk_name)
 
-                print(f"[{time.strftime('%X')}] Success ({mode}): '{chunk_name}' downloaded from {user}.")
+                print(f"[{ts()}] Success ({mode}): '{chunk_name}' downloaded from {user}.")
                 log_download(chunk_name, user, ip)
                 return True
 
         except (socket.error, socket.timeout) as e:
-            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. Error: {e}")
+            print(f"[{ts()}] Chunk {chunk_name} cannot be downloaded from {user}. Error: {e}")
         except json.JSONDecodeError:
-            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. Data could not be parsed.")
+            print(f"[{ts()}] Chunk {chunk_name} cannot be downloaded from {user}. Data could not be parsed.")
         except RuntimeError as e:
-            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. {e}")
+            print(f"[{ts()}] Chunk {chunk_name} cannot be downloaded from {user}. {e}")
         except Exception as e:
-            print(f"[{time.strftime('%X')}] Chunk {chunk_name} cannot be downloaded from {user}. Error: {e}")
+            print(f"[{ts()}] Chunk {chunk_name} cannot be downloaded from {user}. Error: {e}")
 
-    print(f"[{time.strftime('%X')}] CHUNK {chunk_name} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")
+    print(f"[{ts()}] CHUNK {chunk_name} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")
     return False
+
 
 def download_file(file_name, is_secure=False, num_chunks=3):
     state = load_state()
@@ -147,11 +156,12 @@ def download_file(file_name, is_secure=False, num_chunks=3):
     if all_success:
         merged_path = merge_chunks(file_name, num_chunks)
         if merged_path:
-            print(f"\n[{time.strftime('%X')}] File successfully downloaded and merged to '{merged_path}'")
+            print(f"\n[{ts()}] File successfully downloaded and merged to '{merged_path}'")
         else:
-            print(f"\n[{time.strftime('%X')}] Download complete but merge failed.")
+            print(f"\n[{ts()}] Download complete but merge failed.")
     else:
-        print(f"\n[{time.strftime('%X')}] Download incomplete. Missing chunks.")
+        print(f"\n[{ts()}] Download incomplete. Missing chunks.")
+
 
 if __name__ == "__main__":
     target = input("Enter the name of the file you want to download: ")

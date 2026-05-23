@@ -12,11 +12,17 @@ BUFSIZE = 4096
 LOG = "upload_history.log"
 STATE = "network_state.json"
 
+
+def ts():
+    return time.strftime('%X')
+
+
 def log_upload(chunk, user):
-    line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] SENT - Chunk: {chunk} - To: {user}\n"
-    with open(LOG, "a") as f:
-        f.write(line)
-    print(f"[{time.strftime('%X')}] Logged: {line.strip()}")
+    entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] SENT - Chunk: {chunk} - To: {user}"
+    with open(LOG, "a", encoding="utf-8") as f:
+        f.write(entry + "\n")
+    print(f"[{ts()}] {entry}")
+
 
 def get_user(ip):
     if not os.path.exists(STATE):
@@ -26,6 +32,7 @@ def get_user(ip):
             return json.load(f).get("ip2user", {}).get(ip, ip)
     except Exception:
         return ip
+
 
 def handle_client(conn, addr):
     ip = addr[0]
@@ -42,7 +49,7 @@ def handle_client(conn, addr):
 
                 if "requested content" in message:
                     chunk = message.get("requested content")
-                    print(f"[{time.strftime('%X')}] Request received for chunk: {chunk} from {ip}")
+                    print(f"[{ts()}] Request received for chunk: {chunk} from {ip}")
 
                     if os.path.exists(chunk):
                         with open(chunk, "rb") as f:
@@ -53,7 +60,7 @@ def handle_client(conn, addr):
                             "data": data
                         })
                         conn.sendall(response.encode("utf-8"))
-                        print(f"[{time.strftime('%X')}] Successfully sent {chunk}")
+                        print(f"[{ts()}] Successfully sent {chunk}")
                         log_upload(chunk, get_user(ip))
                     else:
                         conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
@@ -61,18 +68,17 @@ def handle_client(conn, addr):
 
                 elif "key" in message:
                     client_pub_key = int(message["key"])
-                    print(f"[{time.strftime('%X')}] Secure handshake initiated ({ip})")
+                    print(f"[{ts()}] Secure handshake initiated ({ip})")
 
                     my_private_key = diffie_hellman.generate_private_key()
                     my_pub_key = diffie_hellman.generate_public_key(my_private_key)
                     shared_secret = diffie_hellman.compute_shared_key(client_pub_key, my_private_key)
 
-                    response = json.dumps({"key": str(my_pub_key)})
-                    conn.sendall(response.encode("utf-8"))
+                    conn.sendall(json.dumps({"key": str(my_pub_key)}).encode("utf-8"))
 
                 elif "requested secured content" in message:
                     chunk = message.get("requested secured content")
-                    print(f"[{time.strftime('%X')}] Secure request received for chunk: {chunk} from {ip}")
+                    print(f"[{ts()}] Secure request received for chunk: {chunk} from {ip}")
 
                     if not shared_secret:
                         conn.sendall(json.dumps({"error": "No shared key established"}).encode("utf-8"))
@@ -91,18 +97,19 @@ def handle_client(conn, addr):
                             "encrypted chunk": encoded_chunk
                         })
                         conn.sendall(response.encode("utf-8"))
-                        print(f"[{time.strftime('%X')}] Securely sent {chunk}")
+                        print(f"[{ts()}] Securely sent {chunk}")
                         log_upload(chunk, get_user(ip))
                     else:
                         conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
                     break
 
         except json.JSONDecodeError:
-            print(f"[{time.strftime('%X')}] Error: Invalid JSON from {ip}")
+            print(f"[{ts()}] Error: Invalid JSON from {ip}")
         except socket.error as e:
-            print(f"[{time.strftime('%X')}] Socket error with {ip}: {e}")
+            print(f"[{ts()}] Socket error with {ip}: {e}")
         except Exception as e:
-            print(f"[{time.strftime('%X')}] Error handling {ip}: {e}")
+            print(f"[{ts()}] Error handling {ip}: {e}")
+
 
 def uploader():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
@@ -120,7 +127,8 @@ def uploader():
                 print("\nShutting down Chunk Uploader...")
                 break
             except Exception as e:
-                print(f"[{time.strftime('%X')}] Server error: {e}")
+                print(f"[{ts()}] Server error: {e}")
+
 
 if __name__ == "__main__":
     uploader()

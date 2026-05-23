@@ -8,17 +8,20 @@ IP = "192.168.1.255"
 PORT = 6000
 INTERVAL = 8
 
+
+def ts():
+    return time.strftime('%X')
+
+
 def start_announcer():
     username = input("Enter your username: ")
     file_to_host = input("Enter the file name to host: ")
 
-    # Split the file into chunks (Req 2.1.0-A)
     chunk_names = split_file(file_to_host)
     if chunk_names:
-        print(f"[{time.strftime('%X')}] Split '{file_to_host}' into {len(chunk_names)} chunk(s): {', '.join(chunk_names)}")
-        print(f"[{time.strftime('%X')}] Starting announcement...")
+        print(f"[{ts()}] Split '{file_to_host}' into {len(chunk_names)} chunk(s): {', '.join(chunk_names)}")
     else:
-        print(f"[{time.strftime('%X')}] No chunks found for '{file_to_host}'. Looking for existing chunk files...")
+        print(f"[{ts()}] Warning: Could not split '{file_to_host}'. Looking for existing chunk files...")
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -33,11 +36,9 @@ def start_announcer():
             ])
 
             if not chunks:
-                print(f"[{time.strftime('%X')}] No chunks found for '{file_to_host}', waiting...")
+                print(f"[{ts()}] No chunks found for '{file_to_host}', waiting...")
                 time.sleep(INTERVAL)
                 continue
-
-            print(f"[{time.strftime('%X')}] {len(chunks)} chunks found for '{file_to_host}'. Starting announcement...")
 
             message = json.dumps({
                 "username": username,
@@ -46,11 +47,12 @@ def start_announcer():
 
             try:
                 sock.sendto(message, (IP, PORT))
-                print(f"[{time.strftime('%X')}] Announcement sent: {chunks}")
+                print(f"[{ts()}] Announcement sent: {chunks}")
             except Exception as e:
-                print(f"Error sending announcement: {e}")
+                print(f"[{ts()}] Error sending announcement: {e}")
 
             time.sleep(INTERVAL)
+
 
 if __name__ == "__main__":
     start_announcer()
