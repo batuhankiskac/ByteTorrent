@@ -3,21 +3,25 @@ import socket
 import threading
 import time
 
+try:
+    from .path_utils import STATE_FILE
+    from .ui_utils import ts
+except ImportError:
+    from pathlib import Path
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from srcs.path_utils import STATE_FILE
+    from srcs.ui_utils import ts
+
 PORT = 6000
 BUFSIZE = 4096
 INTERVAL = 60
-STATE = "network_state.json"
 
 ip2user = {}
 user2ip = {}
 chunks = {}
-
 lock = threading.Lock()
-
-
-def ts():
-    return time.strftime('%X')
-
 
 def save_state():
     state = {
@@ -25,7 +29,7 @@ def save_state():
         "user2ip": user2ip,
         "chunks": chunks
     }
-    with open(STATE, "w", encoding="utf-8") as f:
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=4)
 
 
@@ -34,8 +38,10 @@ def cleanup():
         time.sleep(INTERVAL)
         with lock:
             chunks.clear()
+            ip2user.clear()
+            user2ip.clear()
             save_state()
-        print(f"[{ts()}] Recency check: Content dictionary cleared.")
+        print(f"[{ts()}] Recency check: Discovery state cleared.")
 
 
 def handle_announcement(data, addr):
@@ -48,31 +54,40 @@ def handle_announcement(data, addr):
 
     user = message.get("username")
     chunk_list = message.get("chunks", [])
+    if not user:
+        print(f"[{ts()}] Warning: Announcement from {ip} has no username.")
+        return
 
     with lock:
         ip2user[ip] = user
         user2ip[user] = ip
 
-        changed = False
         for chunk in chunk_list:
             users = chunks.setdefault(chunk, [])
             if user not in users:
                 users.append(user)
-                changed = True
-
-        if changed:
-            save_state()
+        save_state()
 
     print(f"[{ts()}] Peer Found: {user} ({ip}) hosts {', '.join(chunk_list)}")
 
 
-def content_discovery():
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+def create_discovery_socket():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("", PORT))
+        return sock
+    except Exception:
+        sock.close()
+        raise
 
+
+def content_discovery(sock=None):
+    if sock is None:
+        sock = create_discovery_socket()
+
+    with sock:
         threading.Thread(target=cleanup, daemon=True).start()
-
         print(f"Content Discovery started. Listening on UDP port {PORT}...")
 
         while True:

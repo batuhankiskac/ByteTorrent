@@ -1,58 +1,125 @@
-import sys
-import os
-import threading
+import multiprocessing
 import time
 
-
-_SRCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "srcs")
-if _SRCS_DIR not in sys.path:
-    sys.path.insert(0, _SRCS_DIR)
-
-import content_discovery
-import chunk_uploader
-import main as main_module
+from srcs import content_discovery
+from srcs import chunk_uploader
+from srcs import main as main_module
+from srcs.ui_utils import print_box_footer, print_box_title
 
 
-def _start_services():
-    print("\nStarting background services...\n")
+def run_content_discovery_service(startup_pipe):
+    try:
+        sock = content_discovery.create_discovery_socket()
+    except OSError as e:
+        startup_pipe.send(("error", str(e)))
+        startup_pipe.close()
+        return
 
-    discovery_thread = threading.Thread(
-        target=content_discovery.content_discovery,
+    startup_pipe.send(("ok", None))
+    startup_pipe.close()
+    content_discovery.content_discovery(sock)
+
+
+def run_chunk_uploader_service(startup_pipe):
+    try:
+        server = chunk_uploader.create_uploader_socket()
+    except OSError as e:
+        startup_pipe.send(("error", str(e)))
+        startup_pipe.close()
+        return
+
+    startup_pipe.send(("ok", None))
+    startup_pipe.close()
+    chunk_uploader.uploader(server)
+
+
+def start_child_process(name, target):
+    parent_pipe, child_pipe = multiprocessing.Pipe(duplex=False)
+    process = multiprocessing.Process(
+        target=target,
+        args=(child_pipe,),
         daemon=True,
-        name="ContentDiscovery"
+        name=name
     )
-    discovery_thread.start()
-    print("  [OK] Content Discovery service started (UDP 6000)")
-    time.sleep(0.3)
+    process.start()
+    child_pipe.close()
 
-    uploader_thread = threading.Thread(
-        target=chunk_uploader.uploader,
-        daemon=True,
-        name="ChunkUploader"
+    if not parent_pipe.poll(3):
+        process.terminate()
+        process.join(timeout=1)
+        parent_pipe.close()
+        return None, "startup timed out"
+
+    status, detail = parent_pipe.recv()
+    parent_pipe.close()
+    if status != "ok":
+        process.join(timeout=1)
+        return None, detail
+
+    return process, None
+
+
+def start_services():
+    print_box_title("Starting Background Services")
+
+    discovery_process, discovery_error = start_child_process(
+        "ContentDiscovery",
+        run_content_discovery_service
     )
-    uploader_thread.start()
-    print("  [OK] Chunk Uploader service started (TCP 6001)")
-    time.sleep(0.3)
+    if discovery_error:
+        print(f"  [ERROR] Content Discovery could not start on UDP 6000: {discovery_error}")
+    else:
+        print("  [OK] Content Discovery process started (UDP 6000)")
 
-    print("\nAll services are running in the background.")
+    uploader_process, uploader_error = start_child_process(
+        "ChunkUploader",
+        run_chunk_uploader_service
+    )
+    if uploader_error:
+        print(f"  [ERROR] Chunk Uploader could not start on TCP 6001: {uploader_error}")
+    else:
+        print("  [OK] Chunk Uploader process started (TCP 6001)")
+
+    processes = [p for p in (discovery_process, uploader_process) if p is not None]
+
+    if discovery_error or uploader_error:
+        for process in processes:
+            process.terminate()
+            process.join(timeout=1)
+        print("\nOne or more background services failed to start.")
+        print_box_footer()
+        return None
+
+    print("\nAll services are running as child processes.")
     print("Press Ctrl+C at any time to exit.\n")
+    print_box_footer()
     time.sleep(0.5)
+    return processes
 
 
-def _main():
-    print("=" * 50)
-    print("  ByteTorrent P2P Client")
-    print("=" * 50)
+def stop_services(processes):
+    for process in processes:
+        if process.is_alive():
+            process.terminate()
+        process.join(timeout=1)
 
-    _start_services()
+
+def main():
+    print_box_title("ByteTorrent P2P Client")
+
+    processes = start_services()
+    if processes is None:
+        print("Goodbye!")
+        return
 
     try:
         main_module.main_menu()
     except KeyboardInterrupt:
         print("\n\nShutting down ByteTorrent...")
     finally:
+        stop_services(processes)
         print("Goodbye!")
 
 
 if __name__ == "__main__":
-    _main()
+    main()

@@ -3,28 +3,35 @@ import json
 import os
 import socket
 import time
-import diffie_hellman
 import pyDes
-from file_utils import merge_chunks
+
+try:
+    from . import diffie_hellman
+    from .file_utils import chunk_name, merge_chunks
+    from .path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
+    from .ui_utils import print_box_title, ts
+except ImportError:
+    from pathlib import Path
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from srcs import diffie_hellman
+    from srcs.file_utils import chunk_name, merge_chunks
+    from srcs.path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
+    from srcs.ui_utils import print_box_title, ts
 
 PORT = 6001
-STATE_FILE = "network_state.json"
-LOG_FILE = "download_history.log"
-
-
-def ts():
-    return time.strftime('%X')
 
 
 def log_download(chunk, user, ip):
     entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] RECEIVED - Chunk: {chunk} - From: {user} ({ip})"
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
+    with open(DOWNLOAD_LOG, "a", encoding="utf-8") as f:
         f.write(entry + "\n")
     print(f"[{ts()}] {entry}")
 
 
 def load_state():
-    if not os.path.exists(STATE_FILE):
+    if not STATE_FILE.exists():
         print(f"[{ts()}] Error: {STATE_FILE} not found.")
         return None
     try:
@@ -67,7 +74,7 @@ def download_secure(sock, chunk_name):
     des_key = str(shared_secret).zfill(8)[:8].encode("utf-8")
     decrypted = pyDes.des(des_key, pyDes.ECB, pad=None, padmode=pyDes.PAD_PKCS5).decrypt(encrypted_bytes)
 
-    with open(chunk_name, "wb") as f:
+    with open(chunk_path(chunk_name), "wb") as f:
         f.write(decrypted)
 
     return True
@@ -87,7 +94,7 @@ def download_plain(sock, chunk_name):
 
     decoded_data = base64.b64decode(response.get("data", ""))
 
-    with open(chunk_name, "wb") as f:
+    with open(chunk_path(chunk_name), "wb") as f:
         f.write(decoded_data)
 
     return True
@@ -98,6 +105,11 @@ def download_chunk(chunk_name, state, is_secure=False):
     user2ip_map = state.get("user2ip", {})
 
     users_with_chunk = chunks_map.get(chunk_name, [])
+    if not users_with_chunk and " " in chunk_name:
+        legacy_name = chunk_name.replace(" ", "_")
+        users_with_chunk = chunks_map.get(legacy_name, [])
+    else:
+        legacy_name = chunk_name
 
     if not users_with_chunk:
         print(f"[{ts()}] Error: '{chunk_name}' not found on the network.")
@@ -117,9 +129,9 @@ def download_chunk(chunk_name, state, is_secure=False):
                 sock.connect((ip, PORT))
 
                 if is_secure:
-                    download_secure(sock, chunk_name)
+                    download_secure(sock, legacy_name)
                 else:
-                    download_plain(sock, chunk_name)
+                    download_plain(sock, legacy_name)
 
                 print(f"[{ts()}] Success ({mode}): '{chunk_name}' downloaded from {user}.")
                 log_download(chunk_name, user, ip)
@@ -139,22 +151,25 @@ def download_chunk(chunk_name, state, is_secure=False):
 
 
 def download_file(file_name, is_secure=False, num_chunks=3):
+    requested_file = file_name.strip()
+    file_name = os.path.splitext(requested_file)[0]
     state = load_state()
     if not state:
         return
 
-    print(f"\n--- Starting {'secure' if is_secure else 'plain'} download for '{file_name}' ---")
+    mode = "Secure" if is_secure else "Plain"
+    print_box_title(f"Starting {mode} Download: {file_name}")
     all_success = True
 
     for i in range(1, num_chunks + 1):
-        chunk_name = f"{file_name}_{i}"
-        success = download_chunk(chunk_name, state, is_secure)
+        current_chunk = chunk_name(file_name, i)
+        success = download_chunk(current_chunk, state, is_secure)
         if not success:
             all_success = False
             break
 
     if all_success:
-        merged_path = merge_chunks(file_name, num_chunks)
+        merged_path = merge_chunks(file_name, num_chunks, output_name=requested_file or None)
         if merged_path:
             print(f"\n[{ts()}] File successfully downloaded and merged to '{merged_path}'")
         else:
