@@ -1,8 +1,12 @@
 import base64
+import binascii
 import json
+import signal
 import socket
 import threading
 import time
+from typing import Any
+
 import pyDes
 
 from srcs import diffie_hellman
@@ -11,14 +15,14 @@ from srcs.ui_utils import ts
 
 
 PORT = 6001
-BUFSIZE = 4096
+BUFFER_SIZE = 4096
+shutdown_event = threading.Event()
 
 
 def log_upload(chunk, user):
     entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] SENT - Chunk: {chunk} - To: {user}"
     with open(UPLOAD_LOG, "a", encoding="utf-8") as f:
         f.write(entry + "\n")
-    print(f"[{ts()}] {entry}")
 
 
 def get_user(ip):
@@ -26,19 +30,21 @@ def get_user(ip):
         return ip
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f).get("ip2user", {}).get(ip, ip)
-    except Exception:
+            state: dict[str, Any] = json.load(f)
+            return state.get("ip2user", {}).get(ip, ip)
+    except (OSError, json.JSONDecodeError):
         return ip
 
 
 def handle_client(conn, addr):
     ip = addr[0]
+    user = get_user(ip)
     shared_secret = None
 
     with conn:
         try:
             while True:
-                request = conn.recv(BUFSIZE).decode("utf-8")
+                request = conn.recv(BUFFER_SIZE).decode("utf-8")
                 if not request:
                     break
 
@@ -46,7 +52,7 @@ def handle_client(conn, addr):
 
                 if "requested content" in message:
                     chunk = message.get("requested content")
-                    print(f"[{ts()}] Request received for chunk: {chunk} from {ip}")
+                    print(f"[{ts()}] {user} requested chunk: {chunk}")
 
                     file_path = chunk_path(chunk)
                     if file_path.exists():
@@ -58,15 +64,13 @@ def handle_client(conn, addr):
                             "data": data
                         })
                         conn.sendall(response.encode("utf-8"))
-                        print(f"[{ts()}] Successfully sent {chunk}")
-                        log_upload(chunk, get_user(ip))
+                        log_upload(chunk, user)
                     else:
                         conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
                     break
 
                 elif "key" in message:
                     client_pub_key = int(message["key"])
-                    print(f"[{ts()}] Secure handshake initiated ({ip})")
 
                     my_private_key = diffie_hellman.generate_private_key()
                     my_pub_key = diffie_hellman.generate_public_key(my_private_key)
@@ -76,7 +80,7 @@ def handle_client(conn, addr):
 
                 elif "requested secured content" in message:
                     chunk = message.get("requested secured content")
-                    print(f"[{ts()}] Secure request received for chunk: {chunk} from {ip}")
+                    print(f"[{ts()}] {user} requested chunk: {chunk}")
 
                     if not shared_secret:
                         conn.sendall(json.dumps({"error": "No shared key established"}).encode("utf-8"))
@@ -96,18 +100,15 @@ def handle_client(conn, addr):
                             "encrypted chunk": encoded_chunk
                         })
                         conn.sendall(response.encode("utf-8"))
-                        print(f"[{ts()}] Securely sent {chunk}")
-                        log_upload(chunk, get_user(ip))
+                        log_upload(chunk, user)
                     else:
                         conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
                     break
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError, binascii.Error):
             print(f"[{ts()}] Error: Invalid JSON from {ip}")
         except socket.error as e:
             print(f"[{ts()}] Socket error with {ip}: {e}")
-        except Exception as e:
-            print(f"[{ts()}] Error handling {ip}: {e}")
 
 
 def create_uploader_socket():
@@ -117,26 +118,34 @@ def create_uploader_socket():
         server.bind(("", PORT))
         server.listen(5)
         return server
-    except Exception:
+    except OSError:
         server.close()
         raise
 
 
+def request_shutdown(_signum=None, _frame=None):
+    shutdown_event.set()
+
+
 def uploader(server=None):
+    shutdown_event.clear()
     if server is None:
         server = create_uploader_socket()
 
-    with server:
-        print(f"Chunk Uploader started. Listening on TCP port {PORT}...")
+    signal.signal(signal.SIGINT, request_shutdown)
+    signal.signal(signal.SIGTERM, request_shutdown)
 
-        while True:
+    with server:
+        server.settimeout(1)
+        while not shutdown_event.is_set():
             try:
                 conn, addr = server.accept()
                 threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
-            except KeyboardInterrupt:
-                print("\nShutting down Chunk Uploader...")
-                break
-            except Exception as e:
+            except socket.timeout:
+                continue
+            except OSError as e:
+                if shutdown_event.is_set():
+                    break
                 print(f"[{ts()}] Server error: {e}")
 
 

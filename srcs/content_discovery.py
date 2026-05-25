@@ -1,20 +1,21 @@
 import json
+import signal
 import socket
 import threading
-import time
 
 from srcs.path_utils import STATE_FILE
 from srcs.ui_utils import ts
 
 
 PORT = 6000
-BUFSIZE = 4096
+BUFFER_SIZE = 4096
 INTERVAL = 60
 
 ip2user = {}
 user2ip = {}
 chunks = {}
 lock = threading.Lock()
+shutdown_event = threading.Event()
 
 
 def save_state():
@@ -28,14 +29,16 @@ def save_state():
 
 
 def cleanup():
-    while True:
-        time.sleep(INTERVAL)
+    while not shutdown_event.wait(INTERVAL):
         with lock:
             chunks.clear()
             ip2user.clear()
             user2ip.clear()
             save_state()
-        print(f"[{ts()}] Recency check: Discovery state cleared.")
+
+
+def request_shutdown(_signum=None, _frame=None):
+    shutdown_event.set()
 
 
 def handle_announcement(data, addr):
@@ -62,7 +65,7 @@ def handle_announcement(data, addr):
                 users.append(user)
         save_state()
 
-    print(f"[{ts()}] Peer Found: {user} ({ip}) hosts {', '.join(chunk_list)}")
+    print(f"[{ts()}] {user} : {', '.join(chunk_list)}")
 
 
 def create_discovery_socket():
@@ -71,27 +74,32 @@ def create_discovery_socket():
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("", PORT))
         return sock
-    except Exception:
+    except OSError:
         sock.close()
         raise
 
 
 def content_discovery(sock=None):
+    shutdown_event.clear()
     if sock is None:
         sock = create_discovery_socket()
 
-    with sock:
-        threading.Thread(target=cleanup, daemon=True).start()
-        print(f"Content Discovery started. Listening on UDP port {PORT}...")
+    signal.signal(signal.SIGINT, request_shutdown)
+    signal.signal(signal.SIGTERM, request_shutdown)
 
-        while True:
+    with sock:
+        sock.settimeout(1)
+        threading.Thread(target=cleanup, daemon=True).start()
+
+        while not shutdown_event.is_set():
             try:
-                data, addr = sock.recvfrom(BUFSIZE)
+                data, addr = sock.recvfrom(BUFFER_SIZE)
                 handle_announcement(data, addr)
-            except KeyboardInterrupt:
-                print("\nShutting down Content Discovery...")
-                break
-            except Exception as e:
+            except socket.timeout:
+                continue
+            except OSError as e:
+                if shutdown_event.is_set():
+                    break
                 print(f"[{ts()}] Error: {e}")
 
 

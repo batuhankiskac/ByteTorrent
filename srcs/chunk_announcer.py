@@ -1,8 +1,9 @@
 import json
 import os
 import re
+import signal
 import socket
-import time
+import threading
 
 from srcs.file_utils import split_file
 from srcs.path_utils import CHUNK_DIR
@@ -13,6 +14,7 @@ IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
 PORT = 6000
 INTERVAL = 8
 CHUNK_PATTERN = re.compile(r"^.+(?:_| )\d+$")
+shutdown_event = threading.Event()
 
 
 def collect_chunks(directory=CHUNK_DIR):
@@ -33,12 +35,21 @@ def prepare_file(file_to_host):
     chunk_names = split_file(file_to_host)
     if chunk_names:
         print(f"[{ts()}] Split '{file_to_host}' into {len(chunk_names)} chunk(s): {', '.join(chunk_names)}")
+        print(f"[{ts()}] Starting to announce these chunks.")
     else:
         print(f"[{ts()}] Warning: Could not split '{file_to_host}'. Looking for existing chunk files...")
     return chunk_names
 
 
+def request_shutdown(_signum=None, _frame=None):
+    shutdown_event.set()
+
+
 def start_announcer(username=None, file_to_host=None):
+    shutdown_event.clear()
+    signal.signal(signal.SIGINT, request_shutdown)
+    signal.signal(signal.SIGTERM, request_shutdown)
+
     if username is None:
         username = input("Enter your username: ")
     if file_to_host is None:
@@ -55,12 +66,12 @@ def start_announcer(username=None, file_to_host=None):
         if IP not in ("127.0.0.1", "localhost"):
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        while True:
+        while not shutdown_event.is_set():
             chunks = collect_chunks()
 
             if not chunks:
                 print(f"[{ts()}] No chunks found to announce, waiting...")
-                time.sleep(INTERVAL)
+                shutdown_event.wait(INTERVAL)
                 continue
 
             message = json.dumps({
@@ -70,11 +81,10 @@ def start_announcer(username=None, file_to_host=None):
 
             try:
                 sock.sendto(message, (IP, PORT))
-                print(f"[{ts()}] Announcement sent: {chunks}")
-            except Exception as e:
+            except OSError as e:
                 print(f"[{ts()}] Error sending announcement: {e}")
 
-            time.sleep(INTERVAL)
+            shutdown_event.wait(INTERVAL)
 
 
 if __name__ == "__main__":

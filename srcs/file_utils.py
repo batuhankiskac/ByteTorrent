@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 
 from srcs.path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
 
@@ -48,10 +49,15 @@ def split_file(filepath, num_chunks=3):
     return chunk_names
 
 
-def merge_chunks(content_name, num_chunks=3, output_dir=".", output_name=None):
+def merge_chunks(
+    content_name: str,
+    num_chunks: int = 3,
+    output_dir: str = ".",
+    output_name: str | None = None
+) -> str | None:
     basename = os.path.splitext(content_name)[0]
-    output_base = PROJECT_ROOT if output_dir == "." else output_dir
-    final_name = output_name or basename
+    output_base = PROJECT_ROOT if output_dir == "." else Path(output_dir)
+    final_name: str = output_name or basename
 
     chunk_paths = []
     for i in range(1, num_chunks + 1):
@@ -67,12 +73,11 @@ def merge_chunks(content_name, num_chunks=3, output_dir=".", output_name=None):
             print(f"Error: Chunk '{preferred}' not found. Cannot merge.")
             return None
 
-    output_path = os.path.join(output_base, final_name)
+    output_path = output_base / final_name
 
     with open(output_path, "wb") as out:
         for cp in chunk_paths:
             with open(cp, "rb") as cf:
                 out.write(cf.read())
 
-    print(f"Merged {num_chunks} chunks into '{output_path}'")
-    return output_path
+    return str(output_path)

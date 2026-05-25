@@ -1,10 +1,17 @@
+import atexit
 import multiprocessing
+import signal
 import time
+from typing import Optional
 
 from srcs import content_discovery
 from srcs import chunk_uploader
 from srcs import main as main_module
 from srcs.ui_utils import print_box_footer, print_box_title
+
+
+active_processes: list[multiprocessing.Process] = []
+shutdown_started = False
 
 
 def run_content_discovery_service(startup_pipe):
@@ -104,7 +111,29 @@ def stop_services(processes):
         process.join(timeout=1)
 
 
+def shutdown_and_exit(signum: Optional[int] = None, _frame=None):
+    global shutdown_started
+    if shutdown_started:
+        return
+
+    shutdown_started = True
+    if active_processes:
+        print("\nShutting down ByteTorrent...")
+        stop_services(active_processes)
+
+    if signum is not None:
+        raise SystemExit(0)
+
+
+def configure_shutdown_hooks():
+    atexit.register(shutdown_and_exit)
+    signal.signal(signal.SIGINT, shutdown_and_exit)
+    signal.signal(signal.SIGTERM, shutdown_and_exit)
+
+
 def main():
+    global active_processes
+    configure_shutdown_hooks()
     print_box_title("ByteTorrent P2P Client")
 
     processes = start_services()
@@ -112,12 +141,13 @@ def main():
         print("Goodbye!")
         return
 
+    active_processes = processes
+
     try:
         main_module.main_menu()
-    except KeyboardInterrupt:
-        print("\n\nShutting down ByteTorrent...")
     finally:
         stop_services(processes)
+        active_processes = []
         print("Goodbye!")
 
 
