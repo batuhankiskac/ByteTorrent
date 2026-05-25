@@ -4,23 +4,16 @@ import re
 import socket
 import time
 
-try:
-    from .file_utils import split_file
-    from .path_utils import CHUNK_DIR
-    from .ui_utils import ts
-except ImportError:
-    from pathlib import Path
-    import sys
+from srcs.file_utils import split_file
+from srcs.path_utils import CHUNK_DIR
+from srcs.ui_utils import ts
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from srcs.file_utils import split_file
-    from srcs.path_utils import CHUNK_DIR
-    from srcs.ui_utils import ts
 
 IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
 PORT = 6000
 INTERVAL = 8
 CHUNK_PATTERN = re.compile(r"^.+(?:_| )\d+$")
+
 
 def collect_chunks(directory=CHUNK_DIR):
     found = []

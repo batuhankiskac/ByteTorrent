@@ -3,16 +3,9 @@ import socket
 import threading
 import time
 
-try:
-    from .path_utils import STATE_FILE
-    from .ui_utils import ts
-except ImportError:
-    from pathlib import Path
-    import sys
+from srcs.path_utils import STATE_FILE
+from srcs.ui_utils import ts
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from srcs.path_utils import STATE_FILE
-    from srcs.ui_utils import ts
 
 PORT = 6000
 BUFSIZE = 4096
@@ -22,6 +15,7 @@ ip2user = {}
 user2ip = {}
 chunks = {}
 lock = threading.Lock()
+
 
 def save_state():
     state = {

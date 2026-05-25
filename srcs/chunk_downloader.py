@@ -5,20 +5,11 @@ import socket
 import time
 import pyDes
 
-try:
-    from . import diffie_hellman
-    from .file_utils import chunk_name, merge_chunks
-    from .path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
-    from .ui_utils import print_box_title, ts
-except ImportError:
-    from pathlib import Path
-    import sys
+from srcs import diffie_hellman
+from srcs.file_utils import chunk_name, merge_chunks
+from srcs.path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
+from srcs.ui_utils import print_box_title, ts
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from srcs import diffie_hellman
-    from srcs.file_utils import chunk_name, merge_chunks
-    from srcs.path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
-    from srcs.ui_utils import print_box_title, ts
 
 PORT = 6001
 

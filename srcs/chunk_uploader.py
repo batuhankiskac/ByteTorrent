@@ -5,21 +5,15 @@ import threading
 import time
 import pyDes
 
-try:
-    from . import diffie_hellman
-    from .path_utils import STATE_FILE, UPLOAD_LOG, chunk_path
-    from .ui_utils import ts
-except ImportError:
-    from pathlib import Path
-    import sys
+from srcs import diffie_hellman
+from srcs.path_utils import STATE_FILE, UPLOAD_LOG, chunk_path
+from srcs.ui_utils import ts
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from srcs import diffie_hellman
-    from srcs.path_utils import STATE_FILE, UPLOAD_LOG, chunk_path
-    from srcs.ui_utils import ts
 
 PORT = 6001
 BUFSIZE = 4096
+
+
 def log_upload(chunk, user):
     entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] SENT - Chunk: {chunk} - To: {user}"
     with open(UPLOAD_LOG, "a", encoding="utf-8") as f:

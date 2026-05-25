@@ -1,14 +1,7 @@
 import os
 import re
 
-try:
-    from .path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
-except ImportError:
-    from pathlib import Path
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from srcs.path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
+from srcs.path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
 
 
 CHUNK_PATTERN = re.compile(r"^(?P<base>.+?)(?:_| )(?P<index>\d+)$")

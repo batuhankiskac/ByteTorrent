@@ -1,21 +1,11 @@
 import multiprocessing
 
-try:
-    from .chunk_downloader import download_file, load_state
-    from . import chunk_announcer
-    from .file_utils import parse_chunk_base
-    from .path_utils import DOWNLOAD_LOG, UPLOAD_LOG
-    from .ui_utils import print_box_footer, print_box_title
-except ImportError:
-    from pathlib import Path
-    import sys
+from srcs.chunk_downloader import download_file, load_state
+from srcs import chunk_announcer
+from srcs.file_utils import parse_chunk_base
+from srcs.path_utils import DOWNLOAD_LOG, UPLOAD_LOG
+from srcs.ui_utils import print_box_footer, print_box_title
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from srcs.chunk_downloader import download_file, load_state
-    from srcs import chunk_announcer
-    from srcs.file_utils import parse_chunk_base
-    from srcs.path_utils import DOWNLOAD_LOG, UPLOAD_LOG
-    from srcs.ui_utils import print_box_footer, print_box_title
 
 announcer_process = None
 
