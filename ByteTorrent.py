@@ -14,7 +14,7 @@ active_processes: list[multiprocessing.Process] = []
 shutdown_started = False
 
 
-def run_content_discovery_service(startup_pipe):
+def run_content_discovery(startup_pipe):
     try:
         sock = content_discovery.create_discovery_socket()
     except OSError as e:
@@ -27,7 +27,7 @@ def run_content_discovery_service(startup_pipe):
     content_discovery.content_discovery(sock)
 
 
-def run_chunk_uploader_service(startup_pipe):
+def run_chunk_uploader(startup_pipe):
     try:
         server = chunk_uploader.create_uploader_socket()
     except OSError as e:
@@ -71,7 +71,7 @@ def start_services():
 
     discovery_process, discovery_error = start_child_process(
         "ContentDiscovery",
-        run_content_discovery_service
+        run_content_discovery
     )
     if discovery_error:
         print(f"  [ERROR] Content Discovery could not start on UDP 6000: {discovery_error}")
@@ -80,7 +80,7 @@ def start_services():
 
     uploader_process, uploader_error = start_child_process(
         "ChunkUploader",
-        run_chunk_uploader_service
+        run_chunk_uploader
     )
     if uploader_error:
         print(f"  [ERROR] Chunk Uploader could not start on TCP 6001: {uploader_error}")
