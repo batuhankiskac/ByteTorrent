@@ -13,9 +13,9 @@ active_processes: list[multiprocessing.Process] = []
 shutdown_started = False
 
 
-def run_content_discovery(startup_pipe):
+def run_service(startup_pipe, create_socket, serve):
     try:
-        sock = content_discovery.create_discovery_socket()
+        sock = create_socket()
     except OSError as e:
         startup_pipe.send(("error", str(e)))
         startup_pipe.close()
@@ -23,27 +23,14 @@ def run_content_discovery(startup_pipe):
 
     startup_pipe.send(("ok", None))
     startup_pipe.close()
-    content_discovery.content_discovery(sock)
+    serve(sock)
 
 
-def run_chunk_uploader(startup_pipe):
-    try:
-        server = chunk_uploader.create_uploader_socket()
-    except OSError as e:
-        startup_pipe.send(("error", str(e)))
-        startup_pipe.close()
-        return
-
-    startup_pipe.send(("ok", None))
-    startup_pipe.close()
-    chunk_uploader.uploader(server)
-
-
-def start_child_process(name, target):
+def start_child_process(name, create_socket, serve):
     parent_pipe, child_pipe = multiprocessing.Pipe(duplex=False)
     process = multiprocessing.Process(
-        target=target,
-        args=(child_pipe,),
+        target=run_service,
+        args=(child_pipe, create_socket, serve),
         daemon=True,
         name=name
     )
@@ -70,7 +57,8 @@ def start_services():
 
     discovery_process, discovery_error = start_child_process(
         "ContentDiscovery",
-        run_content_discovery
+        content_discovery.create_discovery_socket,
+        content_discovery.content_discovery
     )
     if discovery_error:
         print(f"  [ERROR] Content Discovery could not start on UDP 6000: {discovery_error}")
@@ -79,7 +67,8 @@ def start_services():
 
     uploader_process, uploader_error = start_child_process(
         "ChunkUploader",
-        run_chunk_uploader
+        chunk_uploader.create_uploader_socket,
+        chunk_uploader.uploader
     )
     if uploader_error:
         print(f"  [ERROR] Chunk Uploader could not start on TCP 6001: {uploader_error}")

@@ -123,11 +123,7 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
                 log_download(chunk_label, user, ip)
                 return True
 
-        except (socket.error, socket.timeout, ValueError, KeyError, RuntimeError, binascii.Error):
-            print(f"[{ts()}] Chunk {chunk_label} cannot be downloaded from {user}.")
-        except json.JSONDecodeError:
-            print(f"[{ts()}] Chunk {chunk_label} cannot be downloaded from {user}. Data could not be parsed.")
-        except OSError:
+        except (socket.error, ValueError, KeyError, RuntimeError, binascii.Error):
             print(f"[{ts()}] Chunk {chunk_label} cannot be downloaded from {user}.")
 
     print(f"[{ts()}] CHUNK {chunk_label} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")

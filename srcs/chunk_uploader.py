@@ -36,6 +36,27 @@ def get_user(ip):
         return ip
 
 
+def send_chunk(conn, chunk, user, shared_secret=None):
+    file_path = chunk_path(chunk)
+    if not file_path.exists():
+        conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
+        return
+
+    with open(file_path, "rb") as f:
+        raw = f.read()
+
+    response = {"chunk name": chunk}
+    if shared_secret is None:
+        response["data"] = base64.b64encode(raw).decode("utf-8")
+    else:
+        des_key = str(shared_secret).zfill(8)[:8].encode("utf-8")
+        encrypted = pyDes.des(des_key, pyDes.ECB, pad=None, padmode=pyDes.PAD_PKCS5).encrypt(raw)
+        response["encrypted chunk"] = base64.b64encode(encrypted).decode("utf-8")
+
+    conn.sendall(json.dumps(response).encode("utf-8"))
+    log_upload(chunk, user)
+
+
 def handle_client(conn, addr):
     ip = addr[0]
     user = get_user(ip)
@@ -53,20 +74,7 @@ def handle_client(conn, addr):
                 if "requested content" in message:
                     chunk = message.get("requested content")
                     print(f"[{ts()}] {user} requested chunk: {chunk}")
-
-                    file_path = chunk_path(chunk)
-                    if file_path.exists():
-                        with open(file_path, "rb") as f:
-                            data = base64.b64encode(f.read()).decode("utf-8")
-
-                        response = json.dumps({
-                            "chunk name": chunk,
-                            "data": data
-                        })
-                        conn.sendall(response.encode("utf-8"))
-                        log_upload(chunk, user)
-                    else:
-                        conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
+                    send_chunk(conn, chunk, user)
                     break
 
                 elif "key" in message:
@@ -86,23 +94,7 @@ def handle_client(conn, addr):
                         conn.sendall(json.dumps({"error": "No shared key established"}).encode("utf-8"))
                         break
 
-                    file_path = chunk_path(chunk)
-                    if file_path.exists():
-                        with open(file_path, "rb") as f:
-                            raw = f.read()
-
-                        des_key = str(shared_secret).zfill(8)[:8].encode("utf-8")
-                        encrypted = pyDes.des(des_key, pyDes.ECB, pad=None, padmode=pyDes.PAD_PKCS5).encrypt(raw)
-                        encoded_chunk = base64.b64encode(encrypted).decode("utf-8")
-
-                        response = json.dumps({
-                            "chunk name": chunk,
-                            "encrypted chunk": encoded_chunk
-                        })
-                        conn.sendall(response.encode("utf-8"))
-                        log_upload(chunk, user)
-                    else:
-                        conn.sendall(json.dumps({"error": "File not found"}).encode("utf-8"))
+                    send_chunk(conn, chunk, user, shared_secret)
                     break
 
         except (json.JSONDecodeError, ValueError, binascii.Error):

@@ -53,22 +53,19 @@ def view_users():
     print_box_footer()
 
 
+def read_log(path, empty_message):
+    if not path.exists():
+        return empty_message
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read().strip() or empty_message
+
+
 def view_history():
     print_box_title("History")
     print("Download History:")
-    if DOWNLOAD_LOG.exists():
-        with open(DOWNLOAD_LOG, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            print(content or "No downloads yet.")
-    else:
-        print("No downloads yet.")
+    print(read_log(DOWNLOAD_LOG, "No downloads yet."))
     print("\nUpload History:")
-    if UPLOAD_LOG.exists():
-        with open(UPLOAD_LOG, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            print(content or "No uploads yet.")
-    else:
-        print("No uploads yet.")
+    print(read_log(UPLOAD_LOG, "No uploads yet."))
     print_box_footer()
 
 
