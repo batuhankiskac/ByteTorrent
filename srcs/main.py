@@ -4,7 +4,7 @@ from srcs.chunk_downloader import download_file, load_state
 from srcs import chunk_announcer
 from srcs.file_utils import parse_chunk_base
 from srcs.path_utils import DOWNLOAD_LOG, UPLOAD_LOG
-from srcs.ui_utils import print_box_footer, print_box_title
+from srcs.ui_utils import print_box_bottom, print_box_up
 
 
 announcer_process: multiprocessing.Process | None = None
@@ -32,13 +32,13 @@ def view_contents():
         if base:
             contents.add(base)
 
-    print_box_title("Available Content")
+    print_box_up("Available Content")
     if not contents:
         print("  (No valid chunked files found.)")
     else:
         for content in sorted(contents):
             print(f"  - {content}")
-    print_box_footer()
+    print_box_bottom()
 
 
 def view_users():
@@ -47,10 +47,10 @@ def view_users():
         print("\nNo users discovered yet.")
         return
 
-    print_box_title("Available Users")
+    print_box_up("Available Users")
     for ip, user in sorted(state.get("ip2user", {}).items(), key=lambda item: item[1]):
         print(f"  - {user} ({ip})")
-    print_box_footer()
+    print_box_bottom()
 
 
 def read_log(path, empty_message):
@@ -61,25 +61,25 @@ def read_log(path, empty_message):
 
 
 def view_history():
-    print_box_title("History")
+    print_box_up("History")
     print("Download History:")
     print(read_log(DOWNLOAD_LOG, "No downloads yet."))
     print("\nUpload History:")
     print(read_log(UPLOAD_LOG, "No uploads yet."))
-    print_box_footer()
+    print_box_bottom()
 
 
 def main_menu():
     try:
         while True:
-            print_box_title("ByteTorrent Main Menu")
+            print_box_up("ByteTorrent Main Menu")
             print("1. View users")
             print("2. View available content")
             print("3. Download content")
             print("4. View history")
             print("5. Host a file")
             print("6. Exit")
-            print_box_footer()
+            print_box_bottom()
 
             choice = input("Select an option (1-6): ").strip()
 

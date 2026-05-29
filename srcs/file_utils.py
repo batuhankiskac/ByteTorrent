@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from srcs.path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
+from srcs.path_utils import chunk_path as get_chunk_path, ensure_chunk_dir, PROJECT_ROOT
 
 
 def chunk_name(base, index):
@@ -58,7 +58,7 @@ def merge_chunks(
     chunk_paths = []
     for i in range(1, num_chunks + 1):
         current_chunk = chunk_name(basename, i)
-        current_path = chunk_path(current_chunk)
+        current_path = get_chunk_path(current_chunk)
         if current_path.exists():
             chunk_paths.append(current_path)
         else:
@@ -68,8 +68,8 @@ def merge_chunks(
     output_path = output_base / final_name
 
     with open(output_path, "wb") as out:
-        for cp in chunk_paths:
-            with open(cp, "rb") as cf:
+        for chunk_path in chunk_paths:
+            with open(chunk_path, "rb") as cf:
                 out.write(cf.read())
 
     return str(output_path)

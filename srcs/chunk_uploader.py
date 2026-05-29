@@ -11,7 +11,7 @@ import pyDes
 
 from srcs import diffie_hellman
 from srcs.path_utils import STATE_FILE, UPLOAD_LOG, chunk_path
-from srcs.ui_utils import ts
+from srcs.ui_utils import timestamp
 
 
 PORT = 6001
@@ -73,7 +73,7 @@ def handle_client(conn, addr):
 
                 if "requested content" in message:
                     chunk = message.get("requested content")
-                    print(f"[{ts()}] {user} requested chunk: {chunk}")
+                    print(f"[{timestamp()}] {user} requested chunk: {chunk}")
                     send_chunk(conn, chunk, user)
                     break
 
@@ -81,14 +81,14 @@ def handle_client(conn, addr):
                     client_pub_key = int(message["key"])
 
                     my_private_key = diffie_hellman.generate_private_key()
-                    my_pub_key = diffie_hellman.generate_public_key(my_private_key)
+                    my_public_key = diffie_hellman.generate_public_key(my_private_key)
                     shared_secret = diffie_hellman.compute_shared_key(client_pub_key, my_private_key)
 
-                    conn.sendall(json.dumps({"key": str(my_pub_key)}).encode("utf-8"))
+                    conn.sendall(json.dumps({"key": str(my_public_key)}).encode("utf-8"))
 
                 elif "requested secured content" in message:
                     chunk = message.get("requested secured content")
-                    print(f"[{ts()}] {user} requested chunk: {chunk}")
+                    print(f"[{timestamp()}] {user} requested chunk: {chunk}")
 
                     if not shared_secret:
                         conn.sendall(json.dumps({"error": "No shared key established"}).encode("utf-8"))
@@ -98,9 +98,9 @@ def handle_client(conn, addr):
                     break
 
         except (json.JSONDecodeError, ValueError, binascii.Error):
-            print(f"[{ts()}] Error: Invalid JSON from {ip}")
+            print(f"[{timestamp()}] Error: Invalid JSON from {ip}")
         except socket.error as e:
-            print(f"[{ts()}] Socket error with {ip}: {e}")
+            print(f"[{timestamp()}] Socket error with {ip}: {e}")
 
 
 def create_uploader_socket():
@@ -138,7 +138,7 @@ def uploader(server=None):
             except OSError as e:
                 if shutdown_event.is_set():
                     break
-                print(f"[{ts()}] Server error: {e}")
+                print(f"[{timestamp()}] Server error: {e}")
 
 
 if __name__ == "__main__":

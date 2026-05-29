@@ -2,7 +2,7 @@ import base64
 import binascii
 import json
 import os
-import socket
+import socket as socket_module
 import time
 from typing import Any
 
@@ -11,7 +11,7 @@ import pyDes
 from srcs import diffie_hellman
 from srcs.file_utils import chunk_name, merge_chunks
 from srcs.path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
-from srcs.ui_utils import print_box_title, ts
+from srcs.ui_utils import print_box_up, timestamp
 
 
 PORT = 6001
@@ -25,39 +25,39 @@ def log_download(chunk: str, user: str, ip: str) -> None:
 
 def load_state() -> dict[str, Any] | None:
     if not STATE_FILE.exists():
-        print(f"[{ts()}] Error: {STATE_FILE} not found.")
+        print(f"[{timestamp()}] Error: {STATE_FILE} not found.")
         return None
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
-        print(f"[{ts()}] Error: {STATE_FILE} could not be read (Invalid JSON).")
+        print(f"[{timestamp()}] Error: {STATE_FILE} could not be read (Invalid JSON).")
         return None
 
 
-def receive_all(sock: socket.socket) -> str:
+def receive_all(socket: socket_module.socket) -> str:
     data = b""
     while True:
-        packet = sock.recv(4096)
+        packet = socket.recv(4096)
         if not packet:
             break
         data += packet
     return data.decode("utf-8")
 
 
-def download_secure(sock: socket.socket, requested_chunk: str) -> bool:
+def download_secure(socket: socket_module.socket, requested_chunk: str) -> bool:
     my_private_key = diffie_hellman.generate_private_key()
-    my_pub_key = diffie_hellman.generate_public_key(my_private_key)
-    sock.sendall(json.dumps({"key": str(my_pub_key)}).encode("utf-8"))
+    my_public_key = diffie_hellman.generate_public_key(my_private_key)
+    socket.sendall(json.dumps({"key": str(my_public_key)}).encode("utf-8"))
 
-    resp_data = sock.recv(4096).decode("utf-8")
-    server_pub_key = int(json.loads(resp_data)["key"])
+    response_data = socket.recv(4096).decode("utf-8")
+    server_pub_key = int(json.loads(response_data)["key"])
 
     shared_secret = diffie_hellman.compute_shared_key(server_pub_key, my_private_key)
 
-    sock.sendall(json.dumps({"requested secured content": requested_chunk}).encode("utf-8"))
+    socket.sendall(json.dumps({"requested secured content": requested_chunk}).encode("utf-8"))
 
-    response_data = receive_all(sock)
+    response_data = receive_all(socket)
     response = json.loads(response_data)
 
     if "error" in response:
@@ -73,12 +73,12 @@ def download_secure(sock: socket.socket, requested_chunk: str) -> bool:
     return True
 
 
-def download_plain(sock: socket.socket, requested_chunk: str) -> bool:
-    sock.sendall(json.dumps({"requested content": requested_chunk}).encode("utf-8"))
+def download_plain(socket: socket_module.socket, requested_chunk: str) -> bool:
+    socket.sendall(json.dumps({"requested content": requested_chunk}).encode("utf-8"))
 
-    response_data = receive_all(sock)
+    response_data = receive_all(socket)
     if not response_data:
-        raise socket.error("Empty response received.")
+        raise socket_module.error("Empty response received.")
 
     response = json.loads(response_data)
 
@@ -100,7 +100,7 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
     users_with_chunk = chunks_map.get(chunk_label, [])
 
     if not users_with_chunk:
-        print(f"[{ts()}] Error: '{chunk_label}' not found on the network.")
+        print(f"[{timestamp()}] Error: '{chunk_label}' not found on the network.")
         return False
 
     for user in users_with_chunk:
@@ -108,25 +108,25 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
         if not ip:
             continue
 
-        print(f"[{ts()}] Requesting chunk '{chunk_label}' from {user}.")
+        print(f"[{timestamp()}] Requesting chunk '{chunk_label}' from {user}.")
 
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(5.0)
-                sock.connect((ip, PORT))
+            with socket_module.socket(socket_module.AF_INET, socket_module.SOCK_STREAM) as socket:
+                socket.settimeout(5.0)
+                socket.connect((ip, PORT))
 
                 if is_secure:
-                    download_secure(sock, chunk_label)
+                    download_secure(socket, chunk_label)
                 else:
-                    download_plain(sock, chunk_label)
+                    download_plain(socket, chunk_label)
 
                 log_download(chunk_label, user, ip)
                 return True
 
-        except (socket.error, ValueError, KeyError, RuntimeError, binascii.Error):
-            print(f"[{ts()}] Chunk {chunk_label} cannot be downloaded from {user}.")
+        except (socket_module.error, ValueError, KeyError, RuntimeError, binascii.Error):
+            print(f"[{timestamp()}] Chunk {chunk_label} cannot be downloaded from {user}.")
 
-    print(f"[{ts()}] CHUNK {chunk_label} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")
+    print(f"[{timestamp()}] CHUNK {chunk_label} CANNOT BE DOWNLOADED FROM ONLINE PEERS.")
     return False
 
 
@@ -138,7 +138,7 @@ def download_file(file_name: str, is_secure: bool = False, num_chunks: int = 3) 
         return
 
     mode = "Secure" if is_secure else "Plain"
-    print_box_title(f"Starting {mode} Download: {content_name}")
+    print_box_up(f"Starting {mode} Download: {content_name}")
     all_success = True
 
     for i in range(1, num_chunks + 1):
@@ -151,11 +151,11 @@ def download_file(file_name: str, is_secure: bool = False, num_chunks: int = 3) 
     if all_success:
         merged_path = merge_chunks(content_name, num_chunks, output_name=requested_file or None)
         if merged_path:
-            print(f"\n[{ts()}] File successfully downloaded and merged to '{merged_path}'")
+            print(f"\n[{timestamp()}] File successfully downloaded and merged to '{merged_path}'")
         else:
-            print(f"\n[{ts()}] Download complete but merge failed.")
+            print(f"\n[{timestamp()}] Download complete but merge failed.")
     else:
-        print(f"\n[{ts()}] Download incomplete. Missing chunks.")
+        print(f"\n[{timestamp()}] Download incomplete. Missing chunks.")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 import json
 import os
 import signal
-import socket
+import socket as socket_module
 import threading
 
 from srcs.file_utils import split_file
 from srcs.path_utils import CHUNK_DIR
-from srcs.ui_utils import ts
+from srcs.ui_utils import timestamp
 
 
 IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
@@ -28,10 +28,10 @@ def collect_chunks(directory=CHUNK_DIR):
 def prepare_file(file_to_host):
     chunk_names = split_file(file_to_host)
     if chunk_names:
-        print(f"[{ts()}] Split '{file_to_host}' into {len(chunk_names)} chunk(s): {', '.join(chunk_names)}")
-        print(f"[{ts()}] Starting to announce these chunks.")
+        print(f"[{timestamp()}] Split '{file_to_host}' into {len(chunk_names)} chunk(s): {', '.join(chunk_names)}")
+        print(f"[{timestamp()}] Starting to announce these chunks.")
     else:
-        print(f"[{ts()}] Warning: Could not split '{file_to_host}'. Looking for existing chunk files...")
+        print(f"[{timestamp()}] Warning: Could not split '{file_to_host}'. Looking for existing chunk files...")
     return chunk_names
 
 
@@ -53,18 +53,18 @@ def start_announcer(username=None, file_to_host=None):
 
     existing_chunks = collect_chunks()
     if not existing_chunks:
-        print(f"[{ts()}] Error: No chunks found to announce. Hosting aborted.")
+        print(f"[{timestamp()}] Error: No chunks found to announce. Hosting aborted.")
         return
 
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+    with socket_module.socket(socket_module.AF_INET, socket_module.SOCK_DGRAM) as socket:
         if IP not in ("127.0.0.1", "localhost"):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            socket.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_BROADCAST, 1)
 
         while not shutdown_event.is_set():
             chunks = collect_chunks()
 
             if not chunks:
-                print(f"[{ts()}] No chunks found to announce, waiting...")
+                print(f"[{timestamp()}] No chunks found to announce, waiting...")
                 shutdown_event.wait(INTERVAL)
                 continue
 
@@ -74,9 +74,9 @@ def start_announcer(username=None, file_to_host=None):
             }).encode("utf-8")
 
             try:
-                sock.sendto(message, (IP, PORT))
+                socket.sendto(message, (IP, PORT))
             except OSError as e:
-                print(f"[{ts()}] Error sending announcement: {e}")
+                print(f"[{timestamp()}] Error sending announcement: {e}")
 
             shutdown_event.wait(INTERVAL)
 

@@ -6,7 +6,7 @@ import time
 from srcs import content_discovery
 from srcs import chunk_uploader
 from srcs import main as main_module
-from srcs.ui_utils import print_box_footer, print_box_title
+from srcs.ui_utils import print_box_bottom, print_box_up
 
 
 active_processes: list[multiprocessing.Process] = []
@@ -15,7 +15,7 @@ shutdown_started = False
 
 def run_service(startup_pipe, create_socket, serve):
     try:
-        sock = create_socket()
+        socket = create_socket()
     except OSError as e:
         startup_pipe.send(("error", str(e)))
         startup_pipe.close()
@@ -23,7 +23,7 @@ def run_service(startup_pipe, create_socket, serve):
 
     startup_pipe.send(("ok", None))
     startup_pipe.close()
-    serve(sock)
+    serve(socket)
 
 
 def start_child_process(name, create_socket, serve):
@@ -53,7 +53,7 @@ def start_child_process(name, create_socket, serve):
 
 
 def start_services():
-    print_box_title("Starting Background Services")
+    print_box_up("Starting Background Services")
 
     discovery_process, discovery_error = start_child_process(
         "ContentDiscovery",
@@ -82,12 +82,12 @@ def start_services():
             process.terminate()
             process.join(timeout=1)
         print("\nOne or more background services failed to start.")
-        print_box_footer()
+        print_box_bottom()
         return None
 
     print("\nAll services are running as child processes.")
     print("Press Ctrl+C at any time to exit.\n")
-    print_box_footer()
+    print_box_bottom()
     time.sleep(0.5)
     return processes
 
@@ -122,7 +122,7 @@ def configure_shutdown_hooks():
 def main():
     global active_processes
     configure_shutdown_hooks()
-    print_box_title("ByteTorrent P2P Client")
+    print_box_up("ByteTorrent P2P Client")
 
     processes = start_services()
     if processes is None:

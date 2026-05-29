@@ -1,10 +1,10 @@
 import json
 import signal
-import socket
+import socket as socket_module
 import threading
 
 from srcs.path_utils import STATE_FILE
-from srcs.ui_utils import ts
+from srcs.ui_utils import timestamp
 
 
 PORT = 6000
@@ -46,13 +46,13 @@ def handle_announcement(data, addr):
     try:
         message = json.loads(data.decode("utf-8"))
     except json.JSONDecodeError:
-        print(f"[{ts()}] Error: Invalid JSON from {ip}")
+        print(f"[{timestamp()}] Error: Invalid JSON from {ip}")
         return
 
     user = message.get("username")
     chunk_list = message.get("chunks", [])
     if not user:
-        print(f"[{ts()}] Warning: Announcement from {ip} has no username.")
+        print(f"[{timestamp()}] Warning: Announcement from {ip} has no username.")
         return
 
     with lock:
@@ -65,42 +65,42 @@ def handle_announcement(data, addr):
                 users.append(user)
         save_state()
 
-    print(f"[{ts()}] {user} : {', '.join(chunk_list)}")
+    print(f"[{timestamp()}] {user} : {', '.join(chunk_list)}")
 
 
 def create_discovery_socket():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    socket = socket_module.socket(socket_module.AF_INET, socket_module.SOCK_DGRAM)
     try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("", PORT))
-        return sock
+        socket.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_REUSEADDR, 1)
+        socket.bind(("", PORT))
+        return socket
     except OSError:
-        sock.close()
+        socket.close()
         raise
 
 
-def content_discovery(sock=None):
+def content_discovery(socket=None):
     shutdown_event.clear()
-    if sock is None:
-        sock = create_discovery_socket()
+    if socket is None:
+        socket = create_discovery_socket()
 
     signal.signal(signal.SIGINT, request_shutdown)
     signal.signal(signal.SIGTERM, request_shutdown)
 
-    with sock:
-        sock.settimeout(1)
+    with socket:
+        socket.settimeout(1)
         threading.Thread(target=cleanup, daemon=True).start()
 
         while not shutdown_event.is_set():
             try:
-                data, addr = sock.recvfrom(BUFFER_SIZE)
+                data, addr = socket.recvfrom(BUFFER_SIZE)
                 handle_announcement(data, addr)
-            except socket.timeout:
+            except socket_module.timeout:
                 continue
             except OSError as e:
                 if shutdown_event.is_set():
                     break
-                print(f"[{ts()}] Error: {e}")
+                print(f"[{timestamp()}] Error: {e}")
 
 
 if __name__ == "__main__":
