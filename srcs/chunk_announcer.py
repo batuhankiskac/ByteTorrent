@@ -1,6 +1,5 @@
 import json
 import os
-import re
 import signal
 import socket
 import threading
@@ -13,22 +12,17 @@ from srcs.ui_utils import ts
 IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
 PORT = 6000
 INTERVAL = 8
-CHUNK_PATTERN = re.compile(r"^.+_\d+$")
 shutdown_event = threading.Event()
 
 
 def collect_chunks(directory=CHUNK_DIR):
-    found = []
     if not directory.exists():
-        return found
-    for item in os.listdir(directory):
-        if not os.path.isfile(directory / item):
-            continue
-        if "." in item:
-            continue
-        if CHUNK_PATTERN.match(item):
-            found.append(item)
-    return sorted(found)
+        return []
+    return sorted(
+        item
+        for item in os.listdir(directory)
+        if os.path.isfile(directory / item)
+    )
 
 
 def prepare_file(file_to_host):

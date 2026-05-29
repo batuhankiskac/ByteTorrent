@@ -1,11 +1,7 @@
 import os
-import re
 from pathlib import Path
 
 from srcs.path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
-
-
-CHUNK_PATTERN = re.compile(r"^(?P<base>.+?)_(?P<index>\d+)$")
 
 
 def chunk_name(base, index):
@@ -13,10 +9,10 @@ def chunk_name(base, index):
 
 
 def parse_chunk_base(name):
-    match = CHUNK_PATTERN.match(name)
-    if not match:
+    base, separator, index = name.rpartition("_")
+    if not separator or not base or not index.isdigit():
         return None
-    return match.group("base")
+    return base
 
 
 def split_file(filepath, num_chunks=3):
