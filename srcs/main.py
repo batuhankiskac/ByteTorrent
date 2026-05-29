@@ -1,5 +1,4 @@
 import multiprocessing
-from typing import Optional
 
 from srcs.chunk_downloader import download_file, load_state
 from srcs import chunk_announcer
@@ -8,7 +7,7 @@ from srcs.path_utils import DOWNLOAD_LOG, UPLOAD_LOG
 from srcs.ui_utils import print_box_footer, print_box_title
 
 
-announcer_process: Optional[multiprocessing.Process] = None
+announcer_process: multiprocessing.Process | None = None
 
 
 def stop_announcer():

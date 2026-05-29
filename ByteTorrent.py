@@ -2,7 +2,6 @@ import atexit
 import multiprocessing
 import signal
 import time
-from typing import Optional
 
 from srcs import content_discovery
 from srcs import chunk_uploader
@@ -111,7 +110,7 @@ def stop_services(processes):
         process.join(timeout=1)
 
 
-def shutdown_and_exit(signum: Optional[int] = None, _frame=None):
+def shutdown_and_exit(signum: int | None = None, _frame=None):
     global shutdown_started
     if shutdown_started:
         return

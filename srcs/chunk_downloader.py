@@ -98,11 +98,6 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
     user2ip_map = state.get("user2ip", {})
 
     users_with_chunk = chunks_map.get(chunk_label, [])
-    if not users_with_chunk and " " in chunk_label:
-        requested_chunk = chunk_label.replace(" ", "_")
-        users_with_chunk = chunks_map.get(requested_chunk, [])
-    else:
-        requested_chunk = chunk_label
 
     if not users_with_chunk:
         print(f"[{ts()}] Error: '{chunk_label}' not found on the network.")
@@ -121,9 +116,9 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
                 sock.connect((ip, PORT))
 
                 if is_secure:
-                    download_secure(sock, requested_chunk)
+                    download_secure(sock, chunk_label)
                 else:
-                    download_plain(sock, requested_chunk)
+                    download_plain(sock, chunk_label)
 
                 log_download(chunk_label, user, ip)
                 return True

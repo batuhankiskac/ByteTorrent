@@ -5,11 +5,11 @@ from pathlib import Path
 from srcs.path_utils import chunk_path, ensure_chunk_dir, PROJECT_ROOT
 
 
-CHUNK_PATTERN = re.compile(r"^(?P<base>.+?)(?:_| )(?P<index>\d+)$")
+CHUNK_PATTERN = re.compile(r"^(?P<base>.+?)_(?P<index>\d+)$")
 
 
 def chunk_name(base, index):
-    return f"{base} {index}"
+    return f"{base}_{index}"
 
 
 def parse_chunk_base(name):
@@ -61,16 +61,12 @@ def merge_chunks(
 
     chunk_paths = []
     for i in range(1, num_chunks + 1):
-        preferred = chunk_name(basename, i)
-        legacy = f"{basename}_{i}"
-        preferred_path = chunk_path(preferred)
-        legacy_path = chunk_path(legacy)
-        if preferred_path.exists():
-            chunk_paths.append(preferred_path)
-        elif legacy_path.exists():
-            chunk_paths.append(legacy_path)
+        current_chunk = chunk_name(basename, i)
+        current_path = chunk_path(current_chunk)
+        if current_path.exists():
+            chunk_paths.append(current_path)
         else:
-            print(f"Error: Chunk '{preferred}' not found. Cannot merge.")
+            print(f"Error: Chunk '{current_chunk}' not found. Cannot merge.")
             return None
 
     output_path = output_base / final_name

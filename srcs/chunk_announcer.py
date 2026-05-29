@@ -13,7 +13,7 @@ from srcs.ui_utils import ts
 IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
 PORT = 6000
 INTERVAL = 8
-CHUNK_PATTERN = re.compile(r"^.+(?:_| )\d+$")
+CHUNK_PATTERN = re.compile(r"^.+_\d+$")
 shutdown_event = threading.Event()
 
 
