@@ -17,7 +17,6 @@ Clone the repository and enter the project directory:
 git clone https://github.com/batuhankiskac/ByteTorrent.git
 cd ByteTorrent
 ```
-""
 ## Installation
 
 macOS / Linux:
