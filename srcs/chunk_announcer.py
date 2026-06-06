@@ -2,6 +2,7 @@ import json
 import signal
 import socket as socket_module
 import threading
+import os
 
 from srcs.config import ANNOUNCE_INTERVAL, BROADCAST_IP, DISCOVERY_PORT
 from srcs.file_utils import split_file
