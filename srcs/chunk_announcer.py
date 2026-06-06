@@ -58,14 +58,20 @@ def start_announcer(username=None, file_to_host=None):
         if BROADCAST_IP not in ("127.0.0.1", "localhost"):
             socket.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_BROADCAST, 1)
 
+        print(f"[{timestamp()}] Started announcing chunks every {ANNOUNCE_INTERVAL} seconds.")
+        missing_chunks_reported = False
+
         while not shutdown_event.is_set():
             chunks = collect_chunks()
 
             if not chunks:
-                print(f"[{timestamp()}] No chunks found to announce, waiting...")
+                if not missing_chunks_reported:
+                    print(f"[{timestamp()}] No chunks found to announce, waiting...")
+                    missing_chunks_reported = True
                 shutdown_event.wait(ANNOUNCE_INTERVAL)
                 continue
 
+            missing_chunks_reported = False
             message = json.dumps({
                 "username": username,
                 "chunks": chunks

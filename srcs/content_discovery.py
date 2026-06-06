@@ -11,6 +11,7 @@ from srcs.ui_utils import timestamp
 ip2user = {}
 user2ip = {}
 chunks = {}
+last_printed_announcements = {}
 lock = threading.Lock()
 shutdown_event = threading.Event()
 
@@ -50,6 +51,9 @@ def handle_announcement(data, addr):
         print(f"[{timestamp()}] Warning: Announcement from {ip} has no username.")
         return
 
+    normalized_chunks = tuple(sorted(chunk_list))
+    should_print = False
+
     with lock:
         ip2user[ip] = user
         user2ip[user] = ip
@@ -58,9 +62,17 @@ def handle_announcement(data, addr):
             users = chunks.setdefault(chunk, [])
             if user not in users:
                 users.append(user)
+
+        previous_announcement = last_printed_announcements.get(ip)
+        current_announcement = (user, normalized_chunks)
+        should_print = previous_announcement != current_announcement
+        if should_print:
+            last_printed_announcements[ip] = current_announcement
+
         persist_state()
 
-    print(f"[{timestamp()}] {user} : {', '.join(chunk_list)}")
+    if should_print:
+        print(f"[{timestamp()}] {user} : {', '.join(chunk_list)}")
 
 
 def create_discovery_socket():
