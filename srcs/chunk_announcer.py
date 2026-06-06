@@ -1,17 +1,14 @@
 import json
-import os
 import signal
 import socket as socket_module
 import threading
 
+from srcs.config import ANNOUNCE_INTERVAL, BROADCAST_IP, DISCOVERY_PORT
 from srcs.file_utils import split_file
 from srcs.path_utils import CHUNK_DIR
 from srcs.ui_utils import timestamp
 
 
-IP = os.environ.get("BT_BROADCAST_IP", "192.168.1.255")
-PORT = 6000
-INTERVAL = 8
 shutdown_event = threading.Event()
 
 
@@ -57,7 +54,7 @@ def start_announcer(username=None, file_to_host=None):
         return
 
     with socket_module.socket(socket_module.AF_INET, socket_module.SOCK_DGRAM) as socket:
-        if IP not in ("127.0.0.1", "localhost"):
+        if BROADCAST_IP not in ("127.0.0.1", "localhost"):
             socket.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_BROADCAST, 1)
 
         while not shutdown_event.is_set():
@@ -65,7 +62,7 @@ def start_announcer(username=None, file_to_host=None):
 
             if not chunks:
                 print(f"[{timestamp()}] No chunks found to announce, waiting...")
-                shutdown_event.wait(INTERVAL)
+                shutdown_event.wait(ANNOUNCE_INTERVAL)
                 continue
 
             message = json.dumps({
@@ -74,11 +71,11 @@ def start_announcer(username=None, file_to_host=None):
             }).encode("utf-8")
 
             try:
-                socket.sendto(message, (IP, PORT))
+                socket.sendto(message, (BROADCAST_IP, DISCOVERY_PORT))
             except OSError as e:
                 print(f"[{timestamp()}] Error sending announcement: {e}")
 
-            shutdown_event.wait(INTERVAL)
+            shutdown_event.wait(ANNOUNCE_INTERVAL)
 
 
 if __name__ == "__main__":

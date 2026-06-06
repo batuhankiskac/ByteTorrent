@@ -3,13 +3,10 @@ import signal
 import socket as socket_module
 import threading
 
-from srcs.path_utils import STATE_FILE
+from srcs.config import BUFFER_SIZE, DISCOVERY_CLEANUP_INTERVAL, DISCOVERY_PORT
+from srcs.state_store import save_state
 from srcs.ui_utils import timestamp
 
-
-PORT = 6000
-BUFFER_SIZE = 4096
-INTERVAL = 60
 
 ip2user = {}
 user2ip = {}
@@ -18,23 +15,21 @@ lock = threading.Lock()
 shutdown_event = threading.Event()
 
 
-def save_state():
-    state = {
+def persist_state():
+    save_state({
         "ip2user": ip2user,
         "user2ip": user2ip,
         "chunks": chunks
-    }
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=4)
+    })
 
 
 def cleanup():
-    while not shutdown_event.wait(INTERVAL):
+    while not shutdown_event.wait(DISCOVERY_CLEANUP_INTERVAL):
         with lock:
             chunks.clear()
             ip2user.clear()
             user2ip.clear()
-            save_state()
+            persist_state()
 
 
 def request_shutdown(_signum=None, _frame=None):
@@ -63,7 +58,7 @@ def handle_announcement(data, addr):
             users = chunks.setdefault(chunk, [])
             if user not in users:
                 users.append(user)
-        save_state()
+        persist_state()
 
     print(f"[{timestamp()}] {user} : {', '.join(chunk_list)}")
 
@@ -72,7 +67,7 @@ def create_discovery_socket():
     socket = socket_module.socket(socket_module.AF_INET, socket_module.SOCK_DGRAM)
     try:
         socket.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_REUSEADDR, 1)
-        socket.bind(("", PORT))
+        socket.bind(("", DISCOVERY_PORT))
         return socket
     except OSError:
         socket.close()

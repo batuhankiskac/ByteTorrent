@@ -5,17 +5,16 @@ import signal
 import socket
 import threading
 import time
-from typing import Any
 
 import pyDes
 
 from srcs import diffie_hellman
-from srcs.path_utils import STATE_FILE, UPLOAD_LOG, chunk_path
+from srcs.config import BUFFER_SIZE, UPLOAD_PORT
+from srcs.path_utils import UPLOAD_LOG, chunk_path
+from srcs.state_store import get_user_by_ip
 from srcs.ui_utils import timestamp
 
 
-PORT = 6001
-BUFFER_SIZE = 4096
 shutdown_event = threading.Event()
 
 
@@ -23,17 +22,6 @@ def log_upload(chunk, user):
     entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] SENT - Chunk: {chunk} - To: {user}"
     with open(UPLOAD_LOG, "a", encoding="utf-8") as f:
         f.write(entry + "\n")
-
-
-def get_user(ip):
-    if not STATE_FILE.exists():
-        return ip
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            state: dict[str, Any] = json.load(f)
-            return state.get("ip2user", {}).get(ip, ip)
-    except (OSError, json.JSONDecodeError):
-        return ip
 
 
 def send_chunk(conn, chunk, user, shared_secret=None):
@@ -59,7 +47,7 @@ def send_chunk(conn, chunk, user, shared_secret=None):
 
 def handle_client(conn, addr):
     ip = addr[0]
-    user = get_user(ip)
+    user = get_user_by_ip(ip)
     shared_secret = None
 
     with conn:
@@ -107,7 +95,7 @@ def create_uploader_socket():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind(("", PORT))
+        server.bind(("", UPLOAD_PORT))
         server.listen(5)
         return server
     except OSError:

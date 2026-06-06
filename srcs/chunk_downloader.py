@@ -9,12 +9,11 @@ from typing import Any
 import pyDes
 
 from srcs import diffie_hellman
+from srcs.config import BUFFER_SIZE, CHUNK_COUNT, UPLOAD_PORT
 from srcs.file_utils import chunk_name, merge_chunks
-from srcs.path_utils import DOWNLOAD_LOG, STATE_FILE, chunk_path
+from srcs.path_utils import DOWNLOAD_LOG, chunk_path
+from srcs.state_store import load_state
 from srcs.ui_utils import print_box_up, timestamp
-
-
-PORT = 6001
 
 
 def log_download(chunk: str, user: str, ip: str) -> None:
@@ -23,22 +22,10 @@ def log_download(chunk: str, user: str, ip: str) -> None:
         f.write(entry + "\n")
 
 
-def load_state() -> dict[str, Any] | None:
-    if not STATE_FILE.exists():
-        print(f"[{timestamp()}] Error: {STATE_FILE} not found.")
-        return None
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        print(f"[{timestamp()}] Error: {STATE_FILE} could not be read (Invalid JSON).")
-        return None
-
-
 def receive_all(socket: socket_module.socket) -> str:
     data = b""
     while True:
-        packet = socket.recv(4096)
+        packet = socket.recv(BUFFER_SIZE)
         if not packet:
             break
         data += packet
@@ -50,7 +37,7 @@ def download_secure(socket: socket_module.socket, requested_chunk: str) -> bool:
     my_public_key = diffie_hellman.generate_public_key(my_private_key)
     socket.sendall(json.dumps({"key": str(my_public_key)}).encode("utf-8"))
 
-    response_data = socket.recv(4096).decode("utf-8")
+    response_data = socket.recv(BUFFER_SIZE).decode("utf-8")
     server_pub_key = int(json.loads(response_data)["key"])
 
     shared_secret = diffie_hellman.compute_shared_key(server_pub_key, my_private_key)
@@ -113,7 +100,7 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
         try:
             with socket_module.socket(socket_module.AF_INET, socket_module.SOCK_STREAM) as socket:
                 socket.settimeout(5.0)
-                socket.connect((ip, PORT))
+                socket.connect((ip, UPLOAD_PORT))
 
                 if is_secure:
                     download_secure(socket, chunk_label)
@@ -130,7 +117,7 @@ def download_chunk(chunk_label: str, state: dict[str, Any], is_secure: bool = Fa
     return False
 
 
-def download_file(file_name: str, is_secure: bool = False, num_chunks: int = 3) -> None:
+def download_file(file_name: str, is_secure: bool = False, num_chunks: int = CHUNK_COUNT) -> None:
     requested_file: str = file_name.strip()
     content_name: str = os.path.splitext(requested_file)[0]
     state = load_state()

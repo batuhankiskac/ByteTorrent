@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from srcs.config import CHUNK_COUNT
 from srcs.path_utils import chunk_path as get_chunk_path, ensure_chunk_dir, PROJECT_ROOT
 
 
@@ -15,7 +16,7 @@ def parse_chunk_base(name):
     return base
 
 
-def split_file(filepath, num_chunks=3):
+def split_file(filepath, num_chunks=CHUNK_COUNT):
     if not os.path.exists(filepath):
         print(f"Error: File '{filepath}' not found.")
         return []
@@ -47,7 +48,7 @@ def split_file(filepath, num_chunks=3):
 
 def merge_chunks(
     content_name: str,
-    num_chunks: int = 3,
+    num_chunks: int = CHUNK_COUNT,
     output_dir: str = ".",
     output_name: str | None = None
 ) -> str | None:

@@ -6,6 +6,7 @@ import time
 from srcs import content_discovery
 from srcs import chunk_uploader
 from srcs import main as main_module
+from srcs.config import DISCOVERY_PORT, UPLOAD_PORT
 from srcs.ui_utils import print_box_bottom, print_box_up
 
 
@@ -61,9 +62,9 @@ def start_services():
         content_discovery.content_discovery
     )
     if discovery_error:
-        print(f"  [ERROR] Content Discovery could not start on UDP 6000: {discovery_error}")
+        print(f"  [ERROR] Content Discovery could not start on UDP {DISCOVERY_PORT}: {discovery_error}")
     else:
-        print("  [OK] Content Discovery process started (UDP 6000)")
+        print(f"  [OK] Content Discovery process started (UDP {DISCOVERY_PORT})")
 
     uploader_process, uploader_error = start_child_process(
         "ChunkUploader",
@@ -71,9 +72,9 @@ def start_services():
         chunk_uploader.uploader
     )
     if uploader_error:
-        print(f"  [ERROR] Chunk Uploader could not start on TCP 6001: {uploader_error}")
+        print(f"  [ERROR] Chunk Uploader could not start on TCP {UPLOAD_PORT}: {uploader_error}")
     else:
-        print("  [OK] Chunk Uploader process started (TCP 6001)")
+        print(f"  [OK] Chunk Uploader process started (TCP {UPLOAD_PORT})")
 
     processes = [p for p in (discovery_process, uploader_process) if p is not None]
 
